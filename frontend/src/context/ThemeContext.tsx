@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 
 export type ThemeMode = "light" | "dark";
 
@@ -33,49 +33,49 @@ export const themes: Record<ThemeMode, ThemeColors> = {
     surface: "#FFFFFF",
     card: "#FFFFFF",
     cardHover: "#F1F5F9",
-    border: "#E2E8F0",
+    border: "#E4E4E7",
     primary: "#EF4444",
     primaryHover: "#DC2626",
     secondary: "#64748B",
-    text: "#0F172A",
-    mutedText: "#475569",
-    accent: "#991B1B",
-    gradientBg: "linear-gradient(135deg, #FEF2F2 0%, #F8FAFC 100%)",
-    cardShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05)",
-    glassBg: "rgba(255, 255, 255, 0.8)",
-    navBg: "rgba(255, 255, 255, 0.85)",
+    text: "#09090B",
+    mutedText: "#52525B",
+    accent: "#DC2626",
+    gradientBg: "linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)",
+    cardShadow: "0 4px 20px -2px rgba(0, 0, 0, 0.05)",
+    glassBg: "rgba(255, 255, 255, 0.92)",
+    navBg: "rgba(255, 255, 255, 0.95)",
     badgeBg: "rgba(239, 68, 68, 0.1)",
-    boardBg: "rgba(0, 0, 0, 0.05)",
-    hoverOverlay: "rgba(0, 0, 0, 0.05)",
-    amberBg: "#FEF3C7", // amber-100
-    amberBorder: "#FCD34D", // amber-300
-    amberText: "#78350F", // amber-900
-    progressBg: "rgba(0, 0, 0, 0.1)"
+    boardBg: "rgba(0, 0, 0, 0.03)",
+    hoverOverlay: "rgba(0, 0, 0, 0.04)",
+    amberBg: "#FEF3C7",
+    amberBorder: "#FCD34D",
+    amberText: "#78350F",
+    progressBg: "rgba(0, 0, 0, 0.08)",
   },
   dark: {
-    background: "#090A0F",
-    surface: "#11131A",
-    card: "#161922",
-    cardHover: "#1E222D",
-    border: "#262B3D",
+    background: "#000000",
+    surface: "#09090B",
+    card: "#0A0A0A",
+    cardHover: "#18181B",
+    border: "#27272A",
     primary: "#EF4444",
     primaryHover: "#F87171",
-    secondary: "#94A3B8",
-    text: "#F8FAFC",
-    mutedText: "#94A3B8",
-    accent: "#FCA5A5",
-    gradientBg: "linear-gradient(135deg, #11131A 0%, #090A0F 100%)",
-    cardShadow: "0 20px 40px -15px rgba(0, 0, 0, 0.7)",
-    glassBg: "rgba(17, 19, 26, 0.8)",
-    navBg: "rgba(9, 10, 15, 0.85)",
+    secondary: "#A1A1AA",
+    text: "#FAFAFA",
+    mutedText: "#A1A1AA",
+    accent: "#EF4444",
+    gradientBg: "linear-gradient(135deg, #09090B 0%, #000000 100%)",
+    cardShadow: "0 20px 40px -15px rgba(0, 0, 0, 0.8)",
+    glassBg: "rgba(9, 9, 11, 0.9)",
+    navBg: "rgba(0, 0, 0, 0.95)",
     badgeBg: "rgba(239, 68, 68, 0.15)",
-    boardBg: "rgba(0, 0, 0, 0.4)",
+    boardBg: "rgba(0, 0, 0, 0.6)",
     hoverOverlay: "rgba(255, 255, 255, 0.05)",
-    amberBg: "rgba(69, 26, 3, 0.8)", // amber-950/80
-    amberBorder: "#92400E", // amber-800
-    amberText: "#FDE68A", // amber-200
-    progressBg: "rgba(255, 255, 255, 0.1)"
-  }
+    amberBg: "rgba(69, 26, 3, 0.8)",
+    amberBorder: "#92400E",
+    amberText: "#FDE68A",
+    progressBg: "rgba(255, 255, 255, 0.1)",
+  },
 };
 
 interface ThemeContextType {
@@ -87,7 +87,22 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [themeMode, setThemeMode] = useState<ThemeMode>("dark");
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
+    const saved = localStorage.getItem("intelboard_theme");
+    return saved === "light" || saved === "dark" ? saved : "dark";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("intelboard_theme", themeMode);
+    const root = document.documentElement;
+    if (themeMode === "dark") {
+      root.classList.add("dark");
+      root.classList.remove("light");
+    } else {
+      root.classList.add("light");
+      root.classList.remove("dark");
+    }
+  }, [themeMode]);
 
   const toggleTheme = () => {
     setThemeMode((prev) => (prev === "dark" ? "light" : "dark"));
@@ -97,12 +112,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   return (
     <ThemeContext.Provider value={{ themeMode, theme, toggleTheme }}>
-      <div 
-        style={{ backgroundColor: theme.background, color: theme.text }} 
-        className="min-h-screen font-['Poppins'] transition-colors duration-500 selection:bg-red-500 selection:text-white"
-      >
-        {children}
-      </div>
+      {children}
     </ThemeContext.Provider>
   );
 };
