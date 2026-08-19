@@ -1,18 +1,54 @@
-# IntelBoard AI — Enterprise Criminal Intelligence & Digital Forensics Operating System
+<div align="center">
+  <img src="assets/logo.png" width="120" height="120" alt="IntelBoard AI Forensic Intelligence Emblem" style="border-radius: 24px;" />
+  <h1>IntelBoard AI</h1>
+  <p><strong>Enterprise Digital Forensics, Autonomous LangGraph Multi-Agent Reasoning & Collaborative Evidence Operating System</strong></p>
 
-IntelBoard AI is an enterprise-grade digital forensic investigation platform, autonomous multi-agent reasoning engine, and real-time collaborative evidentiary canvas. Designed for law enforcement agencies, cyber defense units, and intelligence analysts, IntelBoard AI bridges multimodal evidentiary ingestion, LangGraph multi-agent autonomous reasoning, on-premises air-gapped local LLM inferencing, ChromaDB vector search, temporal anomaly detection, real-time WebSocket state synchronization, and court-admissible dossier compilation.
+  <p>
+    <a href="#system-architecture"><img src="https://img.shields.io/badge/Architecture-Distributed_Microservices-dc2626?style=for-the-badge&logo=diagramsdotnet&logoColor=white" alt="Architecture" /></a>
+    <a href="#technology-stack"><img src="https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React 19" /></a>
+    <a href="#technology-stack"><img src="https://img.shields.io/badge/TypeScript_5-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" /></a>
+    <a href="#technology-stack"><img src="https://img.shields.io/badge/Node.js_20-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js" /></a>
+    <a href="#technology-stack"><img src="https://img.shields.io/badge/LangGraph-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white" alt="LangGraph" /></a>
+    <a href="#technology-stack"><img src="https://img.shields.io/badge/Socket.io-010101?style=for-the-badge&logo=socket.io&logoColor=white" alt="Socket.io" /></a>
+    <a href="#technology-stack"><img src="https://img.shields.io/badge/ChromaDB-FF6F00?style=for-the-badge&logo=pypi&logoColor=white" alt="ChromaDB" /></a>
+    <a href="#technology-stack"><img src="https://img.shields.io/badge/Ollama_Air_Gapped-000000?style=for-the-badge&logo=ollama&logoColor=white" alt="Ollama" /></a>
+    <a href="#technology-stack"><img src="https://img.shields.io/badge/MongoDB_Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" /></a>
+    <a href="#docker-deployment"><img src="https://img.shields.io/badge/Docker_Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" /></a>
+    <a href="#security-standards"><img src="https://img.shields.io/badge/Security-SHA_256_Sealed-991b1b?style=for-the-badge&logo=auth0&logoColor=white" alt="Security" /></a>
+  </p>
+</div>
 
 ---
 
-## 1. System Mission & Core Architectural Pillars
+## 1. Mission Overview
+
+IntelBoard AI is an enterprise-grade digital forensic investigation platform, autonomous multi-agent reasoning engine, and real-time collaborative evidentiary canvas. Engineered for law enforcement agencies, cyber defense units, and intelligence analysts, IntelBoard AI bridges multimodal evidentiary ingestion, LangGraph multi-agent autonomous reasoning, on-premises air-gapped local LLM inferencing, ChromaDB vector search, temporal anomaly detection, real-time WebSocket state synchronization, and court-admissible dossier compilation.
+
+---
+
+## 2. Visual Interface & Previews
+
+### Modern SaaS Intelligence Portal
+<div align="center">
+  <img src="assets/landing_preview.jpg" alt="IntelBoard AI SaaS Intelligence Portal" width="95%" style="border-radius: 12px; border: 1px solid #27272a;" />
+</div>
+
+### Collaborative Evidence Pinboard & Tactical Node Network
+<div align="center">
+  <img src="assets/pinboard_preview.jpg" alt="IntelBoard AI Real-Time Evidence Pinboard" width="95%" style="border-radius: 12px; border: 1px solid #27272a;" />
+</div>
+
+---
+
+## 3. Core Architectural Pillars
 
 ### Multimodal Evidence Vault & Cryptographic Chain of Custody
-* **SHA-256 Evidentiary Hashing**: Every ingested artifact (surveillance video, wiretap intercepts, forensic drive images, scanned manifests, and bank ledgers) receives an immutable cryptographic fingerprint at the moment of intake to guarantee non-repudiation.
-* **Optical Character Recognition (OCR) & Structured Extraction**: Ingested documents and logs are converted into searchable, vector-indexed text corpora for rapid semantic retrieval.
-* **Granular Chain of Custody Logging**: Every touch, tag addition, review approval, or hash verification is recorded in the immutable audit ledger with timestamps, officer identities, and network metadata.
+* **SHA-256 Evidentiary Fingerprinting**: Every ingested artifact (surveillance video, wiretap intercepts, forensic drive images, scanned manifests, and bank ledgers) receives an immutable cryptographic hash at intake to guarantee evidentiary non-repudiation.
+* **OCR & Structured Parsing**: Automatically converts raw PDF manifests, financial records, and interrogation transcripts into normalized forensic representations.
+* **Tamper-Proof Audit Logging**: Every view, download, status change, and connection is recorded with timestamps, officer identities, and IP metadata.
 
-### Autonomous LangGraph Multi-Agent Pipeline
-The system integrates an autonomous multi-agent stategraph (`@langchain/langgraph`) that executes five specialized forensic agents in sequential and cyclic topologies:
+### Autonomous LangGraph Multi-Agent Reasoning Engine
+The platform executes five specialized forensic agents orchestrated via `@langchain/langgraph`:
 1. **Ingestion & Normalization Agent**: Parses unstructured raw dockets, transcripts, and evidence logs into structured state payloads.
 2. **Named Entity Recognition (NER) Agent**: Discovers and classifies named entities including Suspects, Organizations, Shell Companies, Financial Accounts, Phone Numbers, Vehicles, and Geo-Locations.
 3. **Link Discovery & Correlation Agent**: Computes relationship edges and cross-docket associations across disparate cases in the vector repository.
@@ -20,46 +56,123 @@ The system integrates an autonomous multi-agent stategraph (`@langchain/langgrap
 5. **Dossier Synthesis Agent**: Generates executive briefs, risk indices, and actionable investigative leads supported by evidentiary citations.
 
 ### Air-Gapped Local LLM Inference & ChromaDB Vector Store
-* **Zero-Exfiltration Air-Gapped Operation**: Native support for on-premises Local Large Language Models (`llama3`, `mistral`, `deepseek-r1`, `qwen2.5`) hosted via local Ollama instances, ensuring sensitive records never traverse third-party cloud infrastructure.
-* **Cloud Fallback Mode**: Configurable integration with Google Gemini 2.5 Flash API for cloud-hosted deployments.
-* **High-Density Vector Storage**: ChromaDB embeddings engine indexing evidentiary documents for real-time Retrieval-Augmented Generation (RAG) and semantic similarity discovery.
+* **Zero-Exfiltration Air-Gapped Operation**: Native support for on-premises Local Large Language Models (`llama3`, `mistral`, `deepseek-r1`, `qwen2.5`) hosted via local Ollama instances.
+* **Semantic Vector Retrieval**: High-density ChromaDB vector collections indexing evidentiary records for real-time Retrieval-Augmented Generation (RAG).
 
-### Real-Time Precinct Collaboration & Access Clearance Gate
+### Real-Time Collaboration & Case Clearance Gate
 * **Case Clearance Request & Approval Gate**: Sealed case operations require investigators to submit formal access requests. Case Creators and Lead Officers review, approve, or reject access requests with an immutable audit trail.
 * **Precision Pinboard State Sync**: Visual evidence boards synchronize in real-time across connected investigators using WebSocket data streams (`@xyflow/react` and Socket.io).
 * **Live Forensic Memos**: Instantaneous precinct chat and memo stream broadcasted strictly within active case rooms.
 
 ---
 
-## 2. High-Level System Architecture
+## 4. System Architecture & Workflows
 
-```
-                                      [ Client Web Applications ]
-                                 (React 19 + TypeScript + Vite + Tailwind)
-                                                     |
-                                   +-----------------+-----------------+
-                                   |                                   |
-                             (REST API HTTPS)                  (WebSockets WSS)
-                                   |                                   |
-                                   v                                   v
-                          [ Express REST Router ]             [ Socket.io Server ]
-                                   |                                   |
-                        +----------+----------+                        |
-                        |                     |                        |
-                        v                     v                        v
-                [ Security & RBAC ]   [ Audit Engine ]        [ Real-Time Sync ]
-                (JWT / Bcrypt / CORS) (SHA-256 Ledger)        (Rooms / Presence)
-                        |                     |                        |
-    +-------------------+---------------------+------------------------+-------------------+
-    |                   |                     |                        |                   |
-    v                   v                     v                        v                   v
-[ MongoDB Atlas ] [ ChromaDB Vector ] [ Ollama Local LLMs ] [ LangGraph Engine ] [ File Vault ]
- (Primary State)   (768d Embeddings)   (Llama3 / Deepseek)   (StateGraph Agents) (SHA-256 Signed)
+### System Architecture Flowchart
+
+```mermaid
+graph TD
+    subgraph ClientLayer["Client Layer (React 19 + TypeScript + Vite)"]
+        UI["Web Interface & Kanban"]
+        Canvas["Evidence Pinboard (@xyflow/react)"]
+        RAGChat["AI Copilot & Query Engine"]
+        Reports["Formal Dossier Export"]
+    end
+
+    subgraph GatewayLayer["Gateway & Real-Time Engine"]
+        RESTRouter["Express REST Router (:5000)"]
+        SocketEngine["Socket.io WebSocket Server"]
+        AuthMiddleware["JWT Authentication & RBAC Gate"]
+    end
+
+    subgraph ServiceLayer["Forensic Services & Agents"]
+        CaseService["Case & Clearance Controller"]
+        EvidenceService["Evidence & SHA-256 Hasher"]
+        LangGraphService["LangGraph Multi-Agent Engine"]
+        AuditService["Cryptographic Audit Logger"]
+    end
+
+    subgraph StorageLayer["Data & Inference Engine"]
+        MongoDB[("MongoDB Primary State")]
+        ChromaDB[("ChromaDB Vector Store (:8000)")]
+        OllamaEngine[("Ollama Local LLMs (:11434)")]
+        FileVault[("Evidence Locker Storage")]
+    end
+
+    UI --> RESTRouter
+    Canvas <--> SocketEngine
+    RAGChat --> RESTRouter
+    Reports --> RESTRouter
+
+    RESTRouter --> AuthMiddleware
+    AuthMiddleware --> CaseService
+    AuthMiddleware --> EvidenceService
+    AuthMiddleware --> LangGraphService
+    AuthMiddleware --> AuditService
+
+    CaseService --> MongoDB
+    EvidenceService --> MongoDB
+    EvidenceService --> FileVault
+    LangGraphService --> OllamaEngine
+    LangGraphService --> ChromaDB
+    AuditService --> MongoDB
 ```
 
 ---
 
-## 3. Technology Stack Matrix
+### LangGraph Multi-Agent StateGraph Pipeline
+
+```mermaid
+flowchart LR
+    Start([Raw Police Reports & Transcripts]) --> Agent1[1. Ingestion & Normalizer]
+    Agent1 --> Agent2[2. NER & Entity Classifier]
+    Agent2 --> Agent3[3. Link Discovery Engine]
+    Agent3 --> Agent4[4. Temporal Anomaly Verifier]
+    Agent4 --> Agent5[5. Dossier Synthesis Agent]
+    Agent5 --> Output([Court-Admissible Dossier & Risk Score])
+
+    style Start fill:#18181b,stroke:#ef4444,stroke-width:2px,color:#fff
+    style Agent1 fill:#09090b,stroke:#3f3f46,color:#fff
+    style Agent2 fill:#09090b,stroke:#3f3f46,color:#fff
+    style Agent3 fill:#09090b,stroke:#3f3f46,color:#fff
+    style Agent4 fill:#09090b,stroke:#ef4444,color:#fff
+    style Agent5 fill:#09090b,stroke:#3f3f46,color:#fff
+    style Output fill:#18181b,stroke:#22c55e,stroke-width:2px,color:#fff
+```
+
+---
+
+### Case Access Clearance & Approval Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor RequestingOfficer as Requesting Officer
+    participant Frontend as IntelBoard UI
+    participant Backend as Express REST API
+    actor LeadInvestigator as Lead Investigator / Creator
+    participant AuditLog as Cryptographic Audit Log
+
+    RequestingOfficer->>Frontend: Submit Clearance Request (Notes & Badge)
+    Frontend->>Backend: POST /api/cases/:id/request-access
+    Backend->>AuditLog: Record CASE_ACCESS_REQUESTED
+    Backend-->>Frontend: Clearance Status: PENDING
+    
+    LeadInvestigator->>Frontend: Inspect Clearance Console
+    Frontend->>Backend: GET /api/cases/:id/access-requests
+    Backend-->>Frontend: Pending Requests List
+
+    LeadInvestigator->>Frontend: Click "Approve Clearance"
+    Frontend->>Backend: PUT /api/cases/:id/access-requests/:requestId (approved)
+    Backend->>AuditLog: Record CASE_ACCESS_APPROVED
+    Backend-->>Frontend: Officer Added to Collaborators Roster
+    
+    RequestingOfficer->>Frontend: Access Unlocked: Live Pinboard & Evidence
+```
+
+---
+
+## 5. Technology Stack Matrix
 
 | Domain | Technology | Version | Purpose |
 | :--- | :--- | :--- | :--- |
@@ -83,141 +196,7 @@ The system integrates an autonomous multi-agent stategraph (`@langchain/langgrap
 
 ---
 
-## 4. Multi-Agent StateGraph Architecture
-
-```
-                    +-----------------------------+
-                    |        START: Raw Input     |
-                    +-----------------------------+
-                                   |
-                                   v
-                    +-----------------------------+
-                    |    Ingestion & Clean Agent  |
-                    +-----------------------------+
-                                   |
-                                   v
-                    +-----------------------------+
-                    |   NER & Entity Extractor    |
-                    +-----------------------------+
-                                   |
-                                   v
-                    +-----------------------------+
-                    |    Link Discovery Agent     |
-                    +-----------------------------+
-                                   |
-                                   v
-                    +-----------------------------+
-                    |  Temporal Anomaly Verifier  |
-                    +-----------------------------+
-                                   |
-                                   v
-                    +-----------------------------+
-                    |   Synthesis Dossier Agent   |
-                    +-----------------------------+
-                                   |
-                                   v
-                    +-----------------------------+
-                    |      END: Final Dossier     |
-                    +-----------------------------+
-```
-
----
-
-## 5. Repository Directory Layout
-
-```
-.
-├── backend/
-│   ├── Dockerfile                   # Multi-stage Node.js container
-│   ├── index.ts                     # Express application & Socket.io server
-│   ├── package.json                 # Backend dependencies & build scripts
-│   ├── tsconfig.json                # TypeScript compiler configuration
-│   └── src/
-│       ├── config/
-│       │   └── db.ts                # MongoDB connection lifecycle manager
-│       ├── controllers/
-│       │   ├── aiController.ts      # Vector search & RAG endpoints
-│       │   ├── authController.ts    # Authentication & officer profile
-│       │   ├── boardController.ts   # Visual pinboard persistence
-│       │   ├── caseController.ts    # Case CRUD, status, and clearance approval
-│       │   ├── entityController.ts  # Suspects, locations, and vehicles
-│       │   ├── evidenceController.ts# Evidence intake & SHA-256 stamping
-│       │   ├── langgraphController.ts# Multi-agent stategraph execution
-│       │   ├── relationshipController.ts# Directed graph associations
-│       │   ├── reportController.ts  # Court dossier compilation
-│       │   ├── taskController.ts    # Tactical assignment tracking
-│       │   └── timelineController.ts# Chronological event sequencing
-│       ├── middleware/
-│       │   ├── auditLogger.ts       # Cryptographic audit trailing
-│       │   └── auth.ts              # JWT extraction & RBAC verification
-│       ├── models/
-│       │   ├── AuditLog.ts          # Immutable audit ledger schema
-│       │   ├── Board.ts             # Pinboard nodes & edges schema
-│       │   ├── Case.ts              # Case schema with access requests
-│       │   ├── Entity.ts            # Mapped forensic entity schema
-│       │   ├── Evidence.ts          # Multimodal evidence schema
-│       │   ├── Relationship.ts      # Inter-entity connection schema
-│       │   ├── Report.ts            # Official case report schema
-│       │   ├── Task.ts              # Tactical task schema
-│       │   ├── TimelineEvent.ts     # Chronological incident schema
-│       │   └── User.ts              # Officer credentials & clearance tier
-│       ├── routes/                  # Express REST route definitions
-│       ├── services/
-│       │   ├── aiService.ts         # LLM abstraction (Ollama / Gemini)
-│       │   ├── chromaService.ts     # ChromaDB vector collection manager
-│       │   ├── investigationGraph.ts# LangGraph stategraph implementation
-│       │   └── socketService.ts     # Socket.io event orchestration
-│       └── utils/
-│           ├── jwt.ts               # Token signing & verification utilities
-│           └── seed.ts              # Production database initialization
-├── frontend/
-│   ├── Dockerfile                   # Multi-stage production Nginx container
-│   ├── index.html                   # HTML5 entry with logo & SEO meta
-│   ├── nginx.conf                   # Production Nginx reverse proxy configuration
-│   ├── package.json                 # Frontend dependencies & build scripts
-│   ├── tsconfig.json                # TypeScript project configuration
-│   ├── vercel.json                  # Single-page application SPA rewrite rule
-│   ├── vite.config.ts               # Vite bundler & proxy configuration
-│   ├── public/
-│   │   ├── favicon.ico              # Forensic emblem favicon
-│   │   └── logo.png                 # Generated cyber intelligence emblem
-│   └── src/
-│       ├── App.tsx                  # Client router & protective route boundary
-│       ├── index.css                # Base theme CSS variables & fonts
-│       ├── main.tsx                 # React DOM mount entry
-│       ├── assets/                  # Brand assets & icons
-│       ├── components/
-│       │   ├── auth/                # Guarded authentication wrapper
-│       │   └── layout/              # Responsive AppLayout with mobile drawer
-│       ├── context/
-│       │   ├── AuthContext.tsx      # User session lifecycle manager
-│       │   ├── CaseContext.tsx      # Active case state & database loader
-│       │   ├── SocketContext.tsx    # Live WebSocket connection & roster
-│       │   └── ThemeContext.tsx     # High-contrast Light/Dark mode provider
-│       ├── pages/
-│       │   ├── AiIntelligenceHub.tsx# Multi-agent execution cockpit
-│       │   ├── AuditLogs.tsx        # Forensic audit trail explorer
-│       │   ├── CaseDetails.tsx      # Case station & clearance approval tab
-│       │   ├── Cases.tsx            # Kanban operational matrix & table
-│       │   ├── Copilot.tsx          # Real-time RAG conversational analyst
-│       │   ├── Dashboard.tsx        # Command cockpit & metric aggregate
-│       │   ├── EvidenceBoard.tsx    # Collaborative ReactFlow pinboard
-│       │   ├── Home.tsx             # SaaS landing page with enlistment CTA
-│       │   ├── Login.tsx            # Officer credentials authentication
-│       │   ├── Register.tsx         # Agency profile creation
-│       │   ├── RelationshipGraph.tsx# Interactive entity network graph
-│       │   ├── Reports.tsx          # Formal case dossier export & print
-│       │   └── Timeline.tsx         # Temporal anomaly & velocity engine
-│       ├── services/                # Axios API client & typed endpoint calls
-│       └── types/                   # TypeScript interfaces & domain models
-├── docker-compose.yml               # Unified 5-container production deployment
-├── DEPLOYMENT.md                    # Cloud (Vercel/Render) & VPS deployment guide
-└── README.md
-```
-
----
-
-## 6. REST API Reference
+## 6. Complete REST API Reference
 
 ### Authentication Endpoints (`/api/auth`)
 | Method | Route | Access | Description |
@@ -227,7 +206,7 @@ The system integrates an autonomous multi-agent stategraph (`@langchain/langgrap
 | `GET` | `/api/auth/me` | Private | Retrieves current authenticated officer profile |
 | `POST` | `/api/auth/logout` | Private | Clears session cookie and invalidates client session |
 
-### Case Operations Endpoints (`/api/cases`)
+### Case Operations & Clearance Endpoints (`/api/cases`)
 | Method | Route | Access | Description |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/cases` | Private | Retrieves all accessible investigation cases with filters |
@@ -247,7 +226,7 @@ The system integrates an autonomous multi-agent stategraph (`@langchain/langgrap
 | `PATCH` | `/api/evidence/:id/review` | Supervisor | Approves, rejects, or flags evidence review status |
 | `DELETE` | `/api/evidence/:id` | Admin | Purges evidence artifact from the registry |
 
-### Artificial Intelligence Endpoints (`/api/ai` & `/api/agents`)
+### Artificial Intelligence & Multi-Agent Endpoints (`/api/ai` & `/api/agents`)
 | Method | Route | Access | Description |
 | :--- | :--- | :--- | :--- |
 | `POST` | `/api/ai/query` | Private | Queries RAG system grounded in case evidence embeddings |
@@ -256,7 +235,7 @@ The system integrates an autonomous multi-agent stategraph (`@langchain/langgrap
 
 ---
 
-## 7. Real-Time WebSocket Protocols (Socket.io)
+## 7. Real-Time WebSocket Protocols
 
 ### Client ➔ Server Events
 | Event Name | Payload | Description |
@@ -276,13 +255,28 @@ The system integrates an autonomous multi-agent stategraph (`@langchain/langgrap
 
 ---
 
-## 8. Local Setup & Quickstart
+## 8. Operational Pages & Feature Matrix
+
+1. **SaaS Landing Page (`/`)**: Overview of the platform, modular capabilities, air-gapped security, and agency enlistment gateway.
+2. **Investigation Dashboard (`/dashboard`)**: Tactical cockpit displaying active surveillance streams, AI risk indicators, and priority case summaries.
+3. **Cases Kanban Matrix (`/cases`)**: Interactive drag-and-drop board tracking cases through investigation stages (`New Intake` ➔ `Active` ➔ `Under Investigation` ➔ `Review` ➔ `Closed`).
+4. **Case Details Cockpit (`/cases/:caseId`)**: Multi-tab investigation station with Working Hypotheses, Evidence Vault, Suspect Profiles, Real-Time Socket Memos, and Clearance Approvals.
+5. **Collaborative Evidence Pinboard (`/cases/:caseId/board`)**: Infinite visual canvas with red-string node links and real-time WebSocket state broadcasting.
+6. **Entity Relationship Graph (`/cases/:caseId/graph`)**: Directed graph depicting suspect hierarchies, shell corporations, and asset transfers.
+7. **Crime Timeline & Velocity Engine (`/cases/:caseId/timeline`)**: Chronological event sequencing with automated alibi travel contradiction alerts.
+8. **AI Intelligence Hub (`/cases/:caseId/ai-hub`)**: Autonomous multi-agent LangGraph workflow execution with ChromaDB semantic vector search.
+9. **Formal Dossier Reports (`/cases/:caseId/reports`)**: Formatted case dossier and chain-of-custody report with 1-click print and PDF export.
+10. **Forensic Audit Stream (`/audit-logs`)**: Immutable logging of every evidence touch, status transition, and user action.
+
+---
+
+## 9. Quickstart & Local Setup
 
 ### Prerequisites
 * Node.js `20.x` or later
-* MongoDB running locally or MongoDB Atlas connection string
-* (Optional) Ollama running locally on port `11434`
-* (Optional) ChromaDB running locally on port `8000`
+* MongoDB running locally (`mongodb://localhost:27017`) or MongoDB Atlas URI
+* (Optional) Ollama running on `http://localhost:11434`
+* (Optional) ChromaDB running on `http://localhost:8000`
 
 ### Step 1: Clone Repository
 ```bash
@@ -297,7 +291,7 @@ npm install
 npm run build
 npm start
 ```
-The backend server and WebSocket listener will initialize on `http://localhost:5000`.
+The backend API and WebSocket listener will initialize on `http://localhost:5000`.
 
 ### Step 3: Frontend Client Start
 ```bash
@@ -305,19 +299,19 @@ cd ../frontend
 npm install
 npm run dev
 ```
-The frontend web application will start on `http://localhost:5173`.
+The client application will start on `http://localhost:5173`.
 
 ---
 
-## 9. One-Command Docker Multi-Container Deployment
+## 10. One-Command Docker Deployment
 
-To deploy the unified five-container platform (Frontend, Backend, MongoDB, ChromaDB, Ollama) on any server or workstation:
+Deploy the entire 5-container architecture (Frontend, Backend, MongoDB, ChromaDB, Ollama) on any server or workstation:
 
 ```bash
 docker compose up --build -d
 ```
 
-### Container Port Mapping
+### Deployed Services & Ports
 * **Frontend Web Application (Nginx)**: `http://localhost:80`
 * **Backend API & WebSockets**: `http://localhost:5000`
 * **ChromaDB Vector Database**: `http://localhost:8000`
@@ -326,17 +320,7 @@ docker compose up --build -d
 
 ---
 
-## 10. Production Cloud Deployment
-
-For production deployments on cloud infrastructure:
-1. **Frontend (Vercel / Netlify)**: Deploy `frontend/` directory with `VITE_API_URL` set to the backend production URL.
-2. **Backend (Render / Railway / Koyeb)**: Deploy `backend/` as a Node.js web service with persistent WebSocket support.
-3. **Database (MongoDB Atlas)**: Connect via `MONGO_URI` connection string.
-4. **Detailed Step-by-Step Instructions**: Refer to [`DEPLOYMENT.md`](file:///e:/Crime%20Investigation/DEPLOYMENT.md) for full cloud configuration guides and environment variable templates.
-
----
-
-## 11. Security, Non-Repudiation & Standards
+## 11. Security, Compliance & Non-Repudiation
 
 * **Stateless Security**: Cryptographic JSON Web Tokens (JWT) with HTTP-only cookies and Bearer token headers.
 * **Role-Based Clearance**: Enforces compartmentalized clearance tiers across investigators, supervisors, and administrative personnel.
