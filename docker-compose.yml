@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - intelboard_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGO_URI=mongodb://mongo:27017/intelboard
+      - JWT_SECRET=intelboard_super_secret_jwt_key_2026
+      - CLIENT_URL=http://localhost
+      - CHROMA_URL=http://chromadb:8000
+      - OLLAMA_BASE_URL=http://ollama:11434
+    depends_on:
+      - mongo
+      - chromadb
+    networks:
+      - intelboard_network
+
+  mongo:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - intelboard_network
+
+  chromadb:
+    image: chromadb/chroma:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    networks:
+      - intelboard_network
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - intelboard_network
+
+volumes:
+  mongo_data:
+  chroma_data:
+  ollama_data:
+
+networks:
+  intelboard_network:
+    driver: bridge
