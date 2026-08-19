@@ -34,28 +34,15 @@ const SocketContext = createContext<SocketContextType | null>(null);
 export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [socket] = useState<Socket>(() => getSocket());
   const [connected, setConnected] = useState(socket.connected);
-  const [roster, setRoster] = useState<ActiveCollaborator[]>([
-    { socketId: "mock-1", name: "Det. Sarah Chen", badgeNumber: "INV-8402" },
-    { socketId: "mock-2", name: "Elena Rostova", badgeNumber: "ANL-3109" },
-  ]);
-  const [chatMessages, setChatMessages] = useState<CaseChatMessage[]>([
-    {
-      id: "init-1",
-      caseId: "CASE-2026-0715",
-      user: { name: "Det. Sarah Chen", badgeNumber: "INV-8402" },
-      message: "Subpoenaed container manifest #AMF-9901 logged. Weight variance flag active.",
-      timestamp: "23:40",
-    },
-  ]);
+  const [roster, setRoster] = useState<ActiveCollaborator[]>([]);
+  const [chatMessages, setChatMessages] = useState<CaseChatMessage[]>([]);
 
   useEffect(() => {
     const handleConnect = () => setConnected(true);
     const handleDisconnect = () => setConnected(false);
 
     const handleRosterUpdate = (updatedRoster: ActiveCollaborator[]) => {
-      if (updatedRoster && updatedRoster.length > 0) {
-        setRoster(updatedRoster);
-      }
+      setRoster(updatedRoster || []);
     };
 
     const handleIncomingMessage = (msg: CaseChatMessage) => {
@@ -76,18 +63,22 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [socket]);
 
   const joinCase = useCallback((caseId: string, user: { id?: string; name: string; badgeNumber?: string }) => {
+    if (!caseId) return;
     socket.emit("join_case", { caseId, user });
   }, [socket]);
 
   const sendCaseMessage = useCallback((caseId: string, message: string, user: { name: string; badgeNumber?: string }) => {
+    if (!caseId || !message) return;
     socket.emit("case_chat_message", { caseId, message, user });
   }, [socket]);
 
   const broadcastBoardUpdate = useCallback((caseId: string, nodes: any[], edges: any[], updatedBy: string) => {
+    if (!caseId) return;
     socket.emit("board_update", { caseId, nodes, edges, updatedBy });
   }, [socket]);
 
   const broadcastEvidenceAdded = useCallback((caseId: string, evidence: any, ingestedBy: string) => {
+    if (!caseId) return;
     socket.emit("evidence_ingested", { caseId, evidence, ingestedBy });
   }, [socket]);
 

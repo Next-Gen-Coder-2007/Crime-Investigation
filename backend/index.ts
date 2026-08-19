@@ -4,7 +4,6 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import { connectDB } from "./src/config/db.js";
-import { seedDatabase } from "./src/utils/seed.js";
 import { SocketService } from "./src/services/socketService.js";
 import authRoutes from "./src/routes/authRoutes.js";
 import caseRoutes from "./src/routes/caseRoutes.js";
@@ -95,10 +94,7 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 const startServer = async () => {
-  const isConnected = await connectDB();
-  if (isConnected) {
-    await seedDatabase();
-  }
+  await connectDB();
 
   httpServer.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
