@@ -21,6 +21,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { useActiveCase } from "../../context/CaseContext";
+import { useSocketContext } from "../../context/SocketContext";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -29,7 +30,8 @@ interface AppLayoutProps {
 export default function AppLayout({ children }: AppLayoutProps) {
   const { user, logout } = useAuth();
   const { theme, themeMode, toggleTheme } = useTheme();
-  const { cases, activeCaseId, setActiveCaseId, collaborators } = useActiveCase();
+  const { cases, activeCaseId, setActiveCaseId } = useActiveCase();
+  const { roster } = useSocketContext();
   const location = useLocation();
   const navigate = useNavigate();
   const params = useParams<{ caseId?: string }>();
@@ -38,7 +40,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCaseDropdownOpen, setIsCaseDropdownOpen] = useState(false);
 
-  const effectiveCaseId = params.caseId || activeCaseId || "CASE-2026-0715";
+  const effectiveCaseId = params.caseId || activeCaseId || cases[0]?.caseNumber || "";
 
   useEffect(() => {
     const handleResize = () => {
@@ -93,36 +95,40 @@ export default function AppLayout({ children }: AppLayoutProps) {
       path: "/cases",
       icon: FiFolder,
     },
-    {
-      label: "Evidence Pinboard",
-      path: `/cases/${effectiveCaseId}/board`,
-      icon: FiShare2,
-    },
-    {
-      label: "Relationship Graph",
-      path: `/cases/${effectiveCaseId}/graph`,
-      icon: FiLayers,
-    },
-    {
-      label: "Crime Timeline",
-      path: `/cases/${effectiveCaseId}/timeline`,
-      icon: FiClock,
-    },
-    {
-      label: "AI Copilot & RAG",
-      path: `/cases/${effectiveCaseId}/copilot`,
-      icon: FiMessageSquare,
-    },
-    {
-      label: "AI Intelligence Hub",
-      path: `/cases/${effectiveCaseId}/ai-hub`,
-      icon: FiCpu,
-    },
-    {
-      label: "Formal Dossier Reports",
-      path: `/cases/${effectiveCaseId}/reports`,
-      icon: FiFileText,
-    },
+    ...(effectiveCaseId
+      ? [
+          {
+            label: "Evidence Pinboard",
+            path: `/cases/${effectiveCaseId}/board`,
+            icon: FiShare2,
+          },
+          {
+            label: "Relationship Graph",
+            path: `/cases/${effectiveCaseId}/graph`,
+            icon: FiLayers,
+          },
+          {
+            label: "Crime Timeline",
+            path: `/cases/${effectiveCaseId}/timeline`,
+            icon: FiClock,
+          },
+          {
+            label: "AI Copilot & RAG",
+            path: `/cases/${effectiveCaseId}/copilot`,
+            icon: FiMessageSquare,
+          },
+          {
+            label: "AI Intelligence Hub",
+            path: `/cases/${effectiveCaseId}/ai-hub`,
+            icon: FiCpu,
+          },
+          {
+            label: "Formal Dossier Reports",
+            path: `/cases/${effectiveCaseId}/reports`,
+            icon: FiFileText,
+          },
+        ]
+      : []),
     {
       label: "Audit Forensics",
       path: "/audit-logs",
@@ -181,73 +187,78 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </Link>
         </div>
 
-        <div className="relative flex items-center">
-          <div className="relative">
-            <button
-              onClick={() => setIsCaseDropdownOpen(!isCaseDropdownOpen)}
-              className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-mono font-bold transition-all cursor-pointer"
-              style={{
-                backgroundColor: themeMode === "light" ? "#ffffff" : "#09090b",
-                borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a",
-                color: themeMode === "light" ? "#09090b" : "#ffffff",
-              }}
-            >
-              <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
-              <span className="text-red-500 font-extrabold truncate max-w-[110px] sm:max-w-none">
-                {effectiveCaseId}
-              </span>
-              <FiChevronDown className="w-3.5 h-3.5 text-zinc-400" />
-            </button>
-
-            {isCaseDropdownOpen && (
-              <div
-                className="absolute left-0 mt-2 w-72 rounded-2xl border shadow-2xl p-2 z-50 space-y-1"
+        {effectiveCaseId && (
+          <div className="relative flex items-center">
+            <div className="relative">
+              <button
+                onClick={() => setIsCaseDropdownOpen(!isCaseDropdownOpen)}
+                className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-mono font-bold transition-all cursor-pointer"
                 style={{
-                  backgroundColor: themeMode === "light" ? "#ffffff" : "#0a0a0a",
+                  backgroundColor: themeMode === "light" ? "#ffffff" : "#09090b",
                   borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a",
+                  color: themeMode === "light" ? "#09090b" : "#ffffff",
                 }}
               >
-                <div className="px-3 py-1.5 text-[10px] font-mono uppercase font-bold text-zinc-400 border-b border-zinc-800">
-                  Switch Active Operation
+                <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+                <span className="text-red-500 font-extrabold truncate max-w-[110px] sm:max-w-none">
+                  {effectiveCaseId}
+                </span>
+                <FiChevronDown className="w-3.5 h-3.5 text-zinc-400" />
+              </button>
+
+              {isCaseDropdownOpen && cases.length > 0 && (
+                <div
+                  className="absolute left-0 mt-2 w-72 rounded-2xl border shadow-2xl p-2 z-50 space-y-1"
+                  style={{
+                    backgroundColor: themeMode === "light" ? "#ffffff" : "#0a0a0a",
+                    borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a",
+                  }}
+                >
+                  <div className="px-3 py-1.5 text-[10px] font-mono uppercase font-bold text-zinc-400 border-b border-zinc-800">
+                    Switch Active Operation
+                  </div>
+                  {cases.map((c) => (
+                    <button
+                      key={c.caseNumber}
+                      onClick={() => handleCaseSelect(c.caseNumber)}
+                      className={`w-full text-left p-2.5 rounded-xl text-xs transition-colors flex flex-col cursor-pointer ${
+                        c.caseNumber === effectiveCaseId
+                          ? "bg-red-600 text-white font-bold"
+                          : "hover:bg-zinc-800/40 text-zinc-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-bold">{c.caseNumber}</span>
+                        <span className="text-[9px] uppercase font-mono">{c.status.replace("_", " ")}</span>
+                      </div>
+                      <span className="text-[11px] truncate mt-0.5 opacity-90">{c.title}</span>
+                    </button>
+                  ))}
                 </div>
-                {cases.map((c) => (
-                  <button
-                    key={c.caseNumber}
-                    onClick={() => handleCaseSelect(c.caseNumber)}
-                    className={`w-full text-left p-2.5 rounded-xl text-xs transition-colors flex flex-col cursor-pointer ${
-                      c.caseNumber === effectiveCaseId
-                        ? "bg-red-600 text-white font-bold"
-                        : "hover:bg-zinc-800/40 text-zinc-300"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono font-bold">{c.caseNumber}</span>
-                      <span className="text-[9px] uppercase font-mono">{c.status.replace("_", " ")}</span>
-                    </div>
-                    <span className="text-[11px] truncate mt-0.5 opacity-90">{c.title}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 rounded-xl border border-zinc-800 bg-black/20 text-[10px] font-mono text-zinc-400">
             <FiUsers className="w-3.5 h-3.5 text-red-500" />
-            <span>Live:</span>
-            <div className="flex items-center gap-1.5">
-              {collaborators.map((c) => (
-                <span
-                  key={c.id}
-                  title={`${c.name} (${c.badge}) - Viewing: ${c.currentView}`}
-                  className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-zinc-300 text-[9px] font-bold flex items-center gap-1"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  <span>{c.name.split(" ")[1] || c.name}</span>
-                </span>
-              ))}
-            </div>
+            <span>Online:</span>
+            {roster.length > 0 ? (
+              <div className="flex items-center gap-1.5">
+                {roster.map((c, idx) => (
+                  <span
+                    key={idx}
+                    className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-zinc-300 text-[9px] font-bold flex items-center gap-1"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span>{c.name?.split(" ")[1] || c.name || "Detective"}</span>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="text-zinc-500">1 Detective (Local)</span>
+            )}
           </div>
 
           <button
@@ -271,10 +282,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
           >
             <div className="flex flex-col text-left">
               <span className="text-xs font-bold leading-tight truncate max-w-[80px] sm:max-w-[120px]" style={{ color: theme.text }}>
-                {user?.name || "Det. Sarah Chen"}
+                {user?.name || "Investigator"}
               </span>
               <span className="text-[9px] font-mono uppercase font-bold text-red-500 hidden sm:inline">
-                [INVESTIGATOR]
+                [{user?.badgeNumber || "ACTIVE"}]
               </span>
             </div>
 
@@ -335,10 +346,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
             })}
           </div>
 
-          {(isSidebarOpen || isMobileMenuOpen) && (
+          {(isSidebarOpen || isMobileMenuOpen) && effectiveCaseId && (
             <div className="p-3 m-2 rounded-xl border border-zinc-800 bg-black/40 text-[10px] font-mono text-zinc-400 space-y-1">
-              <div className="text-red-500 font-bold uppercase">Real-Time Sync Active</div>
-              <div className="truncate">Active Case: {effectiveCaseId}</div>
+              <div className="text-red-500 font-bold uppercase">Precinct Sync Online</div>
+              <div className="truncate">Case: {effectiveCaseId}</div>
             </div>
           )}
         </aside>

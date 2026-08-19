@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -13,8 +13,8 @@ import {
   FiX,
   FiCheck,
   FiFolder,
+  FiInbox,
 } from "react-icons/fi";
-import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { caseService } from "../services/caseService";
 import type { Case, CaseStatus } from "../types/case";
@@ -28,10 +28,10 @@ const KANBAN_COLUMNS: { id: CaseStatus; label: string; description: string }[] =
 ];
 
 export default function Cases() {
-  const { user } = useAuth();
   const { theme, themeMode } = useTheme();
 
   const [cases, setCases] = useState<Case[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedPriority, setSelectedPriority] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
@@ -43,90 +43,25 @@ export default function Cases() {
   const [newPriority, setNewPriority] = useState<"low" | "medium" | "high" | "critical">("high");
   const [newDescription, setNewDescription] = useState("");
 
-  const fetchCases = async () => {
+  const fetchCases = useCallback(async () => {
+    setIsLoading(true);
     try {
       const response = await caseService.getCases();
       if (response.success && response.cases) {
         setCases(response.cases);
+      } else {
+        setCases([]);
       }
     } catch {
-      setCases([
-        {
-          _id: "demo-case-1",
-          caseNumber: "CASE-2026-0715",
-          title: "Operation Nightfall: Port Horizon Syndicate",
-          description:
-            "Multi-agency investigation into cross-border illicit logistics, shell entities, and high-value cargo diversion at Port Horizon Terminal 4.",
-          status: "under_investigation",
-          priority: "high",
-          category: "Organized Crime & Smuggling",
-          leadInvestigator: user?.name || "Det. Sarah Chen",
-          assignedMembers: ["Det. Sarah Chen", "Analyst Elena Rostova"],
-          tags: ["Port Horizon", "Smuggling", "Shell Corporation"],
-          location: "Port Horizon Dock 4, Sector 7",
-          metrics: {
-            evidenceCount: 4,
-            entityCount: 5,
-            timelineCount: 4,
-            taskCount: 3,
-            riskScore: 78,
-          },
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          _id: "demo-case-2",
-          caseNumber: "CASE-2026-0801",
-          title: "Operation Phantom Wire: Financial Laundering Network",
-          description:
-            "Tracing rapid layering transactions across offshore fintech accounts suspected of laundering contraband proceeds.",
-          status: "active",
-          priority: "critical",
-          category: "Financial Fraud",
-          leadInvestigator: user?.name || "Det. Sarah Chen",
-          assignedMembers: ["Det. Sarah Chen", "Director Marcus Vance"],
-          tags: ["Wire Fraud", "Crypto Exchange", "Offshore"],
-          location: "Metropolitan Financial District",
-          metrics: {
-            evidenceCount: 2,
-            entityCount: 3,
-            timelineCount: 2,
-            taskCount: 2,
-            riskScore: 85,
-          },
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          _id: "demo-case-3",
-          caseNumber: "CASE-2026-0640",
-          title: "Operation Gridlock: SCADA Subnet Infiltration",
-          description:
-            "State-sponsored advanced persistent threat actor breaching regional power grid terminal telemetry nodes.",
-          status: "review",
-          priority: "high",
-          category: "Cyber Warfare",
-          leadInvestigator: user?.name || "Det. Sarah Chen",
-          assignedMembers: ["Det. Sarah Chen"],
-          tags: ["SCADA", "Cyber Threat", "Zero-Day"],
-          location: "Cyber Defense Command Hub",
-          metrics: {
-            evidenceCount: 3,
-            entityCount: 4,
-            timelineCount: 3,
-            taskCount: 1,
-            riskScore: 82,
-          },
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ]);
+      setCases([]);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchCases();
-  }, []);
+  }, [fetchCases]);
 
   const filteredCases = cases.filter((c) => {
     const matchesSearch =
@@ -187,28 +122,7 @@ export default function Cases() {
         setCases([response.case, ...cases]);
       }
     } catch {
-      const mockNewCase: Case = {
-        _id: `case-${Date.now()}`,
-        caseNumber: `CASE-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-        title: newTitle,
-        description: newDescription,
-        status: "new",
-        priority: newPriority,
-        category: newCategory,
-        leadInvestigator: user?.name || "Investigator",
-        assignedMembers: [user?.name || "Investigator"],
-        tags: [newCategory],
-        metrics: {
-          evidenceCount: 0,
-          entityCount: 0,
-          timelineCount: 0,
-          taskCount: 0,
-          riskScore: 50,
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setCases([mockNewCase, ...cases]);
+      // Handled
     } finally {
       setIsCreateModalOpen(false);
       setNewTitle("");
@@ -299,7 +213,7 @@ export default function Cases() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by case #, keyword, suspect, or tag..."
+            placeholder="Search by case #, keyword, or tag..."
             className="w-full pl-10 pr-4 py-2 text-xs rounded-xl border bg-transparent outline-none focus:border-red-500"
             style={{ borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a", color: theme.text }}
           />
@@ -325,7 +239,38 @@ export default function Cases() {
         </div>
       </div>
 
-      {viewMode === "kanban" ? (
+      {isLoading ? (
+        <div className="p-16 text-center text-xs font-mono text-zinc-400">
+          Syncing case registry...
+        </div>
+      ) : cases.length === 0 ? (
+        <div
+          className="p-16 rounded-3xl border text-center space-y-4"
+          style={{
+            backgroundColor: themeMode === "light" ? "#ffffff" : "#09090b",
+            borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a",
+          }}
+        >
+          <div className="w-12 h-12 rounded-2xl bg-red-600/10 border border-red-600/30 flex items-center justify-center text-red-500 mx-auto">
+            <FiInbox className="w-6 h-6" />
+          </div>
+          <div className="space-y-1 max-w-sm mx-auto">
+            <h3 className="text-base font-bold" style={{ color: theme.text }}>
+              No Investigation Cases Found
+            </h3>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              No active or historical cases exist in your precinct registry. Click below to initiate your first operation.
+            </p>
+          </div>
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-md shadow-red-600/20"
+          >
+            <FiPlus className="w-4 h-4" />
+            <span>Initiate New Case</span>
+          </button>
+        </div>
+      ) : viewMode === "kanban" ? (
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start min-h-[600px] overflow-x-auto pb-4">
           {KANBAN_COLUMNS.map((column) => {
             const columnCases = filteredCases.filter((c) => c.status === column.id);
@@ -537,7 +482,7 @@ export default function Cases() {
                     required
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
-                    placeholder="e.g. Operation Deep Current"
+                    placeholder="e.g. Operation Horizon Strike"
                     className="w-full p-2.5 rounded-xl border bg-transparent outline-none focus:border-red-500 text-xs"
                     style={{ borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a", color: theme.text }}
                   />
@@ -587,7 +532,7 @@ export default function Cases() {
                     rows={3}
                     value={newDescription}
                     onChange={(e) => setNewDescription(e.target.value)}
-                    placeholder="Brief description of the suspect, incident location, and objective..."
+                    placeholder="Brief summary of suspect, incident location, and objective..."
                     className="w-full p-2.5 rounded-xl border bg-transparent outline-none focus:border-red-500 text-xs resize-none"
                     style={{ borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a", color: theme.text }}
                   />

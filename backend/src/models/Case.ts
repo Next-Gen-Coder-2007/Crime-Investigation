@@ -2,6 +2,28 @@ import mongoose, { Document, Schema, Model } from "mongoose";
 
 export type CaseStatus = "new" | "active" | "under_investigation" | "review" | "closed";
 export type CasePriority = "low" | "medium" | "high" | "critical";
+export type AccessRequestStatus = "pending" | "approved" | "rejected";
+
+export interface IAccessRequest {
+  _id?: mongoose.Types.ObjectId | string;
+  userId: mongoose.Types.ObjectId;
+  userName: string;
+  userBadge: string;
+  userEmail: string;
+  requestedAt: Date;
+  status: AccessRequestStatus;
+  reviewedBy?: string;
+  reviewedAt?: Date;
+  notes?: string;
+}
+
+export interface ICollaborator {
+  userId: mongoose.Types.ObjectId;
+  name: string;
+  badgeNumber: string;
+  role: string;
+  joinedAt: Date;
+}
 
 export interface ICase extends Document {
   caseNumber: string;
@@ -12,6 +34,8 @@ export interface ICase extends Document {
   category: string;
   leadInvestigator: mongoose.Types.ObjectId;
   assignedMembers: mongoose.Types.ObjectId[];
+  collaborators: ICollaborator[];
+  accessRequests: IAccessRequest[];
   tags: string[];
   location?: string;
   deadline?: Date;
@@ -25,6 +49,32 @@ export interface ICase extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
+
+const AccessRequestSchema = new Schema<IAccessRequest>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    userName: { type: String, required: true },
+    userBadge: { type: String, required: true },
+    userEmail: { type: String, default: "" },
+    requestedAt: { type: Date, default: Date.now },
+    status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
+    reviewedBy: { type: String, default: "" },
+    reviewedAt: { type: Date },
+    notes: { type: String, default: "" },
+  },
+  { _id: true }
+);
+
+const CollaboratorSchema = new Schema<ICollaborator>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    name: { type: String, required: true },
+    badgeNumber: { type: String, required: true },
+    role: { type: String, default: "investigator" },
+    joinedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
 
 const CaseSchema = new Schema<ICase>(
   {
@@ -70,6 +120,8 @@ const CaseSchema = new Schema<ICase>(
         ref: "User",
       },
     ],
+    collaborators: [CollaboratorSchema],
+    accessRequests: [AccessRequestSchema],
     tags: [
       {
         type: String,

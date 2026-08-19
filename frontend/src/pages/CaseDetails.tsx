@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   FiArrowLeft,
@@ -10,10 +10,12 @@ import {
   FiPlus,
   FiSend,
   FiFileText,
-  FiUser,
-  FiCheckCircle,
   FiLayers,
   FiHash,
+  FiLock,
+  FiCheck,
+  FiX,
+  FiAlertCircle,
 } from "react-icons/fi";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
@@ -22,7 +24,7 @@ import { useSocketContext } from "../context/SocketContext";
 import { caseService } from "../services/caseService";
 import { evidenceService } from "../services/evidenceService";
 import { aiService } from "../services/aiService";
-import type { Case, Evidence } from "../types/case";
+import type { Case, Evidence, AccessRequest } from "../types/case";
 
 export default function CaseDetails() {
   const { caseId } = useParams<{ caseId: string }>();
@@ -33,7 +35,13 @@ export default function CaseDetails() {
 
   const [currentCase, setCurrentCase] = useState<Case | null>(null);
   const [evidenceList, setEvidenceList] = useState<Evidence[]>([]);
-  const [activeTab, setActiveTab] = useState<"overview" | "evidence" | "suspects" | "chat" | "ai">("overview");
+  const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([]);
+  const [activeTab, setActiveTab] = useState<"overview" | "evidence" | "approvals" | "chat" | "ai">("overview");
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [requestNotes, setRequestNotes] = useState("");
+  const [isRequestingAccess, setIsRequestingAccess] = useState(false);
+  const [accessFeedback, setAccessFeedback] = useState<string | null>(null);
 
   const [isEvidenceModalOpen, setIsEvidenceModalOpen] = useState(false);
   const [evidenceTitle, setEvidenceTitle] = useState("");
@@ -45,168 +53,70 @@ export default function CaseDetails() {
   const [isAnalyzingCase, setIsAnalyzingCase] = useState(false);
   const [aiAnalysisResult, setAiAnalysisResult] = useState<string | null>(null);
 
+  const fetchCaseDetails = useCallback(async () => {
+    if (!caseId) return;
+    setIsLoading(true);
+    try {
+      const [caseRes, evRes, reqRes] = await Promise.all([
+        caseService.getCaseById(caseId),
+        evidenceService.getEvidenceByCase(caseId),
+        caseService.getAccessRequests(caseId),
+      ]);
+
+      if (caseRes.success && caseRes.case) {
+        setCurrentCase(caseRes.case);
+      } else {
+        setCurrentCase(null);
+      }
+
+      if (evRes.success && evRes.evidence) {
+        setEvidenceList(evRes.evidence);
+      } else {
+        setEvidenceList([]);
+      }
+
+      if (reqRes.success && reqRes.accessRequests) {
+        setAccessRequests(reqRes.accessRequests);
+      } else {
+        setAccessRequests([]);
+      }
+    } catch {
+      setCurrentCase(null);
+      setEvidenceList([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [caseId]);
+
   useEffect(() => {
     if (caseId) {
       setActiveCaseId(caseId);
       joinCase(caseId, {
         id: user?.id,
-        name: user?.name || "Det. Sarah Chen",
-        badgeNumber: user?.badgeNumber || "INV-8402",
+        name: user?.name || "Officer",
+        badgeNumber: user?.badgeNumber || "INV-0000",
       });
+      fetchCaseDetails();
     }
-  }, [caseId, setActiveCaseId, joinCase, user]);
+  }, [caseId, setActiveCaseId, joinCase, user, fetchCaseDetails]);
 
-  const getFallbackCaseData = (cid?: string): Case => {
-    if (cid?.includes("0801")) {
-      return {
-        _id: "c-0801",
-        caseNumber: cid || "CASE-2026-0801",
-        title: "Operation Phantom Wire: Financial Laundering Network",
-        description: "Multi-jurisdictional financial crime ring layering illicit contraband revenues through offshore Panama shell entities and unhosted OTC crypto transactions.",
-        category: "Financial Fraud",
-        priority: "critical",
-        status: "active",
-        leadInvestigator: { id: "u-1", name: "Det. Sarah Chen", email: "chen@intelboard.ai", role: "investigator", status: "active", badgeNumber: "INV-8402", department: "Financial Crimes", createdAt: "" },
-        assignedMembers: [],
-        tags: ["wire-fraud", "crypto"],
-        metrics: { evidenceCount: 3, entityCount: 4, timelineCount: 3, taskCount: 2, riskScore: 85 },
-        createdAt: "2026-01-10T10:00:00Z",
-        updatedAt: new Date().toISOString(),
-      };
-    }
+  const leadId =
+    typeof currentCase?.leadInvestigator === "object"
+      ? (currentCase.leadInvestigator as any)?._id || (currentCase.leadInvestigator as any)?.id
+      : currentCase?.leadInvestigator;
 
-    return {
-      _id: "c-0715",
-      caseNumber: cid || "CASE-2026-0715",
-      title: "Operation Nightfall: Port Horizon Syndicate",
-      description: "High-value cross-border logistics diversion, customs manifest fraud, and port perimeter breach at Port Horizon Pier 4 Terminal.",
-      category: "Organized Contraband",
-      priority: "critical",
-      status: "under_investigation",
-      leadInvestigator: { id: "u-1", name: "Det. Sarah Chen", email: "chen@intelboard.ai", role: "investigator", status: "active", badgeNumber: "INV-8402", department: "Major Crimes", createdAt: "" },
-      assignedMembers: [],
-      tags: ["smuggling", "port-horizon"],
-      metrics: { evidenceCount: 4, entityCount: 5, timelineCount: 4, taskCount: 4, riskScore: 92 },
-      createdAt: "2026-01-14T21:15:00Z",
-      updatedAt: new Date().toISOString(),
-    };
-  };
+  const isLead = user?.id && leadId && (user.id.toString() === leadId.toString() || user.role === "admin");
 
-  const getFallbackEvidence = (cid?: string): Evidence[] => {
-    if (cid?.includes("0801")) {
-      return [
-        {
-          _id: "ev-1",
-          caseId: cid || "c-0801",
-          title: "Subpoenaed Bank Records #AMF-8941 - Swiss Intermediary",
-          description: "Wire transaction routing $450,000 through offshore shell account.",
-          type: "financial",
-          fileHash: "SHA256:8a1b2c3d4e5f67890abcdef1234567890abcdef1",
-          location: "Metropolitan Financial District",
-          uploadedBy: "Det. Sarah Chen",
-          timestamp: "2026-01-12T14:20:00Z",
-          tags: ["financial", "wire"],
-          reviewPriority: "high",
-          reviewStatus: "approved",
-          aiSummary: "Director resolution filing links Viktor Mercer as sole signing beneficiary for $450,000 outbound wire.",
-          createdAt: "2026-01-12T14:20:00Z",
-        },
-        {
-          _id: "ev-2",
-          caseId: cid || "c-0801",
-          title: "Blockchain OTC Telemetry Ledger",
-          description: "Decentralized OTC conversion log.",
-          type: "document",
-          fileHash: "SHA256:1234567890abcdef1234567890abcdef12345678",
-          location: "Decentralized OTC Desk",
-          uploadedBy: "Det. Sarah Chen",
-          timestamp: "2026-01-12T14:28:00Z",
-          tags: ["crypto", "otc"],
-          reviewPriority: "high",
-          reviewStatus: "approved",
-          aiSummary: "Instantaneous liquidation into privacy tokens executed within 8 minutes of wire settlement.",
-          createdAt: "2026-01-12T14:28:00Z",
-        },
-      ];
-    }
+  const isCollaborator =
+    isLead ||
+    currentCase?.collaborators?.some((c) => c.userId?.toString() === user?.id?.toString()) ||
+    currentCase?.assignedMembers?.some(
+      (m) => (typeof m === "object" ? (m as any)._id : m)?.toString() === user?.id?.toString()
+    );
 
-    return [
-      {
-        _id: "ev-1",
-        caseId: cid || "c-0715",
-        title: "CCTV Surveillance Footage - Pier 4 Gate A",
-        description: "High-definition camera feed at Gate A.",
-        type: "video",
-        fileHash: "SHA256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1f",
-        location: "Pier 4 Gate A",
-        uploadedBy: "Det. Sarah Chen",
-        timestamp: "2026-01-14T23:45:00Z",
-        tags: ["cctv", "surveillance"],
-        reviewPriority: "high",
-        reviewStatus: "approved",
-        aiSummary: "Vehicle with masked license plates identified entering restricted sector at 23:45. Dmitri Vance escorted inside.",
-        createdAt: "2026-01-14T23:45:00Z",
-      },
-      {
-        _id: "ev-2",
-        caseId: cid || "c-0715",
-        title: "Intercepted Interrogation Transcript - Dock Master",
-        description: "Formal sworn statement of terminal dock master.",
-        type: "interview",
-        fileHash: "SHA256:4b227777d4dd1fc61c6f884f48641d02b4d121d3",
-        location: "Central Precinct Room 3",
-        uploadedBy: "Det. Sarah Chen",
-        timestamp: "2026-01-15T01:30:00Z",
-        tags: ["transcript", "interview"],
-        reviewPriority: "high",
-        reviewStatus: "approved",
-        aiSummary: "Witness confirmed Viktor Mercer held private meeting with Dmitri Vance at Warehouse 14B prior to manifest clearance.",
-        createdAt: "2026-01-15T01:30:00Z",
-      },
-      {
-        _id: "ev-3",
-        caseId: cid || "c-0715",
-        title: "Customs Clearance Manifest #AMF-9901",
-        description: "Official shipping declaration filed with port authority.",
-        type: "document",
-        fileHash: "SHA256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4",
-        location: "Port Horizon Customs Terminal",
-        uploadedBy: "Det. Sarah Chen",
-        timestamp: "2026-01-14T21:15:00Z",
-        tags: ["manifest", "customs"],
-        reviewPriority: "high",
-        reviewStatus: "approved",
-        aiSummary: "Declared weight (1.2 Tons) contradicts crane telemetry lift sensor (5.4 Tons). Suggests concealed cargo.",
-        createdAt: "2026-01-14T21:15:00Z",
-      },
-    ];
-  };
-
-  useEffect(() => {
-    const fetchCaseDetails = async () => {
-      try {
-        const [caseRes, evRes] = await Promise.all([
-          caseService.getCaseById(caseId || "c-0715"),
-          evidenceService.getEvidenceByCase(caseId || "c-0715"),
-        ]);
-        if (caseRes.success && caseRes.case) {
-          setCurrentCase(caseRes.case);
-        } else {
-          setCurrentCase(getFallbackCaseData(caseId));
-        }
-        if (evRes.success && evRes.evidence && evRes.evidence.length > 0) {
-          setEvidenceList(evRes.evidence);
-        } else {
-          setEvidenceList(getFallbackEvidence(caseId));
-        }
-      } catch {
-        setCurrentCase(getFallbackCaseData(caseId));
-        setEvidenceList(getFallbackEvidence(caseId));
-      }
-    };
-
-    fetchCaseDetails();
-  }, [caseId]);
+  const myPendingRequest = accessRequests.find(
+    (r) => r.userId?.toString() === user?.id?.toString() && r.status === "pending"
+  );
 
   const handleStatusChange = async (newStatus: any) => {
     if (!currentCase) return;
@@ -218,40 +128,54 @@ export default function CaseDetails() {
     }
   };
 
+  const handleRequestAccess = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!caseId) return;
+    setIsRequestingAccess(true);
+    setAccessFeedback(null);
+    try {
+      const res = await caseService.requestAccess(caseId, requestNotes);
+      if (res.success) {
+        setAccessFeedback("Clearance request submitted. Awaiting authorization from the Lead Investigator.");
+        fetchCaseDetails();
+      }
+    } catch (err: any) {
+      setAccessFeedback(err.message || "Failed to submit clearance request.");
+    } finally {
+      setIsRequestingAccess(false);
+      setRequestNotes("");
+    }
+  };
+
+  const handleReviewRequest = async (requestId: string, decision: "approved" | "rejected") => {
+    if (!caseId) return;
+    try {
+      const res = await caseService.reviewAccessRequest(caseId, requestId, decision);
+      if (res.success) {
+        fetchCaseDetails();
+      }
+    } catch {
+      // Handled
+    }
+  };
+
   const handleUploadEvidence = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!evidenceTitle.trim()) return;
-
-    const fakeHash = `SHA256:${Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}`;
-
-    const newEvidence: Evidence = {
-      _id: `ev-${Date.now()}`,
-      caseId: currentCase?._id || "c-0715",
-      title: evidenceTitle,
-      description: evidenceDesc,
-      type: evidenceType,
-      fileHash: fakeHash,
-      location: evidenceLocation || "Unknown",
-      uploadedBy: user?.name || "Det. Sarah Chen",
-      timestamp: new Date().toISOString(),
-      tags: [evidenceType],
-      reviewPriority: "high",
-      reviewStatus: "approved",
-      aiSummary: evidenceDesc || "Direct evidence ingested into digital chain of custody vault.",
-      createdAt: new Date().toISOString(),
-    };
-
-    setEvidenceList([newEvidence, ...evidenceList]);
-    broadcastEvidenceAdded(caseId || "CASE-2026-0715", newEvidence, user?.name || "Det. Sarah Chen");
+    if (!evidenceTitle.trim() || !currentCase) return;
 
     try {
-      await evidenceService.uploadEvidence({
-        caseId: currentCase?._id || "c-0715",
+      const res = await evidenceService.uploadEvidence({
+        caseId: currentCase._id,
         title: evidenceTitle,
         type: evidenceType,
         description: evidenceDesc,
         location: evidenceLocation,
       });
+
+      if (res.success && res.evidence) {
+        setEvidenceList([res.evidence, ...evidenceList]);
+        broadcastEvidenceAdded(currentCase.caseNumber, res.evidence, user?.name || "Investigator");
+      }
     } catch {
       // Handled
     } finally {
@@ -264,44 +188,128 @@ export default function CaseDetails() {
 
   const handleSendMemo = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!memoInput.trim()) return;
+    if (!memoInput.trim() || !currentCase) return;
 
-    sendCaseMessage(
-      caseId || "CASE-2026-0715",
-      memoInput,
-      {
-        name: user?.name || "Det. Sarah Chen",
-        badgeNumber: user?.badgeNumber || "INV-8402",
-      }
-    );
+    sendCaseMessage(currentCase.caseNumber, memoInput, {
+      name: user?.name || "Investigator",
+      badgeNumber: user?.badgeNumber || "INV-0000",
+    });
     setMemoInput("");
   };
 
   const handleRunAiAnalysis = async () => {
+    if (!currentCase) return;
     setIsAnalyzingCase(true);
     try {
-      const res = await aiService.runLangGraph(caseId || "CASE-2026-0715", currentCase?.description);
+      const res = await aiService.runLangGraph(currentCase.caseNumber, currentCase.description);
       if (res.success && res.data) {
         setAiAnalysisResult(res.data.dossierSummary);
       }
     } catch {
-      setAiAnalysisResult(
-        "Autonomous LangGraph Multi-Agent investigation completed. Correlated 4 target entities, flagged 2 critical alibi contradictions, and verified $450,000 wire routing through unhosted crypto liquidations."
-      );
+      setAiAnalysisResult("Autonomous LangGraph investigation pipeline completed against case records.");
     } finally {
       setIsAnalyzingCase(false);
     }
   };
 
-  if (!currentCase) {
+  if (isLoading) {
     return (
-      <div className="p-8 text-center text-xs font-mono text-zinc-400">
-        Loading case cockpit...
+      <div className="p-16 text-center text-xs font-mono text-zinc-400">
+        Authenticating clearance and loading case telemetry...
       </div>
     );
   }
 
-  const caseMessages = chatMessages.filter((m) => m.caseId === (caseId || "CASE-2026-0715"));
+  if (!currentCase) {
+    return (
+      <div className="p-16 text-center space-y-4">
+        <h2 className="text-base font-bold text-white">Case Record Not Found</h2>
+        <p className="text-xs text-zinc-400">The specified investigation case does not exist in the precinct registry.</p>
+        <Link to="/cases" className="px-4 py-2 rounded-xl bg-red-600 text-white font-bold text-xs inline-block">
+          Return to Matrix
+        </Link>
+      </div>
+    );
+  }
+
+  if (!isCollaborator) {
+    return (
+      <div className="max-w-xl mx-auto my-12 p-8 rounded-3xl border shadow-2xl space-y-6 text-center"
+        style={{
+          backgroundColor: themeMode === "light" ? "#ffffff" : "#0a0a0a",
+          borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a",
+        }}
+      >
+        <div className="w-12 h-12 rounded-2xl bg-red-600/10 border border-red-600/30 flex items-center justify-center text-red-500 mx-auto">
+          <FiLock className="w-6 h-6" />
+        </div>
+
+        <div className="space-y-2">
+          <span className="text-[10px] font-mono font-bold text-red-500 uppercase px-2 py-0.5 rounded bg-red-600/10 border border-red-600/30">
+            {currentCase.caseNumber}
+          </span>
+          <h2 className="text-xl font-black" style={{ color: theme.text }}>
+            Restricted Operational Clearance
+          </h2>
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            This case operation is sealed. You must submit a clearance request to the Lead Investigator before joining the collaboration room.
+          </p>
+        </div>
+
+        {myPendingRequest ? (
+          <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-xs text-amber-400 space-y-1">
+            <div className="font-bold flex items-center justify-center gap-1.5">
+              <FiAlertCircle className="w-4 h-4" />
+              <span>Clearance Request Pending Review</span>
+            </div>
+            <p className="text-[11px] text-zinc-400">
+              Submitted on {new Date(myPendingRequest.requestedAt).toLocaleString()}. You will be notified once authorized.
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleRequestAccess} className="space-y-3 text-left">
+            {accessFeedback && (
+              <div className="p-3 rounded-xl border border-red-600/30 bg-red-600/10 text-xs text-red-400 font-semibold">
+                {accessFeedback}
+              </div>
+            )}
+            <div className="space-y-1">
+              <label className="text-[10px] font-mono uppercase font-bold text-zinc-400">
+                Reason for Clearance / Operational Assignment
+              </label>
+              <textarea
+                rows={2}
+                required
+                value={requestNotes}
+                onChange={(e) => setRequestNotes(e.target.value)}
+                placeholder="e.g. Assigned to assist with forensic surveillance review..."
+                className="w-full p-2.5 rounded-xl border bg-transparent outline-none focus:border-red-500 text-xs resize-none"
+                style={{ borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a", color: theme.text }}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isRequestingAccess}
+              className="w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-red-600/20"
+            >
+              <FiShield className="w-4 h-4" />
+              <span>{isRequestingAccess ? "Submitting Request..." : "Request Case Clearance"}</span>
+            </button>
+          </form>
+        )}
+
+        <div className="pt-4 border-t" style={{ borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a" }}>
+          <Link to="/cases" className="text-xs text-zinc-400 hover:text-red-500 font-bold">
+            ← Return to Case Registry
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const caseMessages = chatMessages.filter((m) => m.caseId === currentCase.caseNumber);
+  const pendingRequests = accessRequests.filter((r) => r.status === "pending");
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto font-sans" style={{ fontFamily: "'Poppins', sans-serif" }}>
@@ -316,18 +324,18 @@ export default function CaseDetails() {
 
         <div className="flex items-center gap-2">
           <Link
-            to={`/cases/${caseId || "CASE-2026-0715"}/board`}
+            to={`/cases/${currentCase.caseNumber}/board`}
             className="px-3 py-1.5 rounded-xl border border-zinc-800 hover:border-red-600 text-zinc-300 hover:text-white text-xs font-bold transition-colors flex items-center gap-1.5"
           >
             <FiShare2 className="w-3.5 h-3.5 text-red-500" />
             <span>Visual Canvas</span>
           </Link>
           <Link
-            to={`/cases/${caseId || "CASE-2026-0715"}/reports`}
+            to={`/cases/${currentCase.caseNumber}/reports`}
             className="px-3 py-1.5 rounded-xl border border-zinc-800 hover:border-red-600 text-zinc-300 hover:text-white text-xs font-bold transition-colors flex items-center gap-1.5"
           >
             <FiFileText className="w-3.5 h-3.5 text-red-500" />
-            <span>Case Dossier</span>
+            <span>Formal Dossier</span>
           </Link>
         </div>
       </div>
@@ -346,7 +354,7 @@ export default function CaseDetails() {
                 {currentCase.caseNumber}
               </span>
               <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">
-                {currentCase.category || "General Felony"}
+                {currentCase.category || "General Crime"}
               </span>
               <span className="text-zinc-600">•</span>
               <span className="text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-red-600/20 text-red-400 border border-red-600/40">
@@ -359,7 +367,7 @@ export default function CaseDetails() {
             </h1>
 
             <p className="text-xs text-zinc-400 max-w-3xl leading-relaxed">
-              {currentCase.description}
+              {currentCase.description || "No primary synopsis filed."}
             </p>
           </div>
 
@@ -386,25 +394,27 @@ export default function CaseDetails() {
 
             <div className="flex items-center gap-2 p-2 rounded-xl border border-zinc-800 bg-black/20 text-[11px] font-mono">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-zinc-400">Collaborating:</span>
-              <strong className="text-white">{roster.length} Detectives Online</strong>
+              <span className="text-zinc-400">Active Presence:</span>
+              <strong className="text-white">{roster.length || 1} Connected</strong>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
           <div className="p-3.5 rounded-2xl border border-zinc-800 bg-black/10">
-            <span className="text-[10px] font-mono text-zinc-400 uppercase block">Evidence Files</span>
+            <span className="text-[10px] font-mono text-zinc-400 uppercase block">Evidence Records</span>
             <span className="text-xl font-black text-white block mt-1">{evidenceList.length}</span>
           </div>
           <div className="p-3.5 rounded-2xl border border-zinc-800 bg-black/10">
-            <span className="text-[10px] font-mono text-zinc-400 uppercase block">Threat Level</span>
-            <span className="text-xl font-black text-red-500 block mt-1">{currentCase.metrics?.riskScore || 88}%</span>
+            <span className="text-[10px] font-mono text-zinc-400 uppercase block">Authorized Detectives</span>
+            <span className="text-xl font-black text-red-500 block mt-1">
+              {(currentCase.collaborators?.length || 0) + 1}
+            </span>
           </div>
           <div className="p-3.5 rounded-2xl border border-zinc-800 bg-black/10">
             <span className="text-[10px] font-mono text-zinc-400 uppercase block">Lead Officer</span>
             <span className="text-xs font-bold text-white block mt-1.5 truncate">
-              {typeof currentCase.leadInvestigator === "object" ? currentCase.leadInvestigator.name : "Det. Sarah Chen"}
+              {typeof currentCase.leadInvestigator === "object" ? currentCase.leadInvestigator.name : "Lead Investigator"}
             </span>
           </div>
           <div className="p-3.5 rounded-2xl border border-zinc-800 bg-black/10">
@@ -428,7 +438,7 @@ export default function CaseDetails() {
           }`}
         >
           <FiFolder className="w-4 h-4" />
-          <span>Case Hypothesis & Leads</span>
+          <span>Case Hypothesis</span>
         </button>
 
         <button
@@ -442,13 +452,13 @@ export default function CaseDetails() {
         </button>
 
         <button
-          onClick={() => setActiveTab("suspects")}
+          onClick={() => setActiveTab("approvals")}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === "suspects" ? "bg-red-600 text-white" : "text-zinc-400 hover:text-white"
+            activeTab === "approvals" ? "bg-red-600 text-white" : "text-zinc-400 hover:text-white"
           }`}
         >
-          <FiUser className="w-4 h-4" />
-          <span>Persons of Interest</span>
+          <FiShield className="w-4 h-4" />
+          <span>Access Clearance ({pendingRequests.length} Pending)</span>
         </button>
 
         <button
@@ -485,25 +495,41 @@ export default function CaseDetails() {
               Working Investigative Theory
             </h3>
             <p className="text-xs leading-relaxed text-zinc-300">
-              The primary working theory posits that illicit cargo was routed under legitimate customs manifests registered to Aegis Maritime Ltd. Telemetry and CCTV records place primary suspect Viktor Mercer inside Warehouse 14B alongside cargo weight discrepancies of 4.2 tons.
+              {currentCase.description || "Primary case operational hypotheses and evidentiary correlation recorded in this docket."}
             </p>
 
             <h3 className="text-sm font-bold tracking-tight uppercase tracking-wider text-red-500 font-mono pt-4">
-              Priority Investigative Directives
+              Collaborative Workspace Actions
             </h3>
-            <div className="space-y-2">
-              <div className="p-3 rounded-xl border border-zinc-800 bg-black/20 flex items-start gap-2.5 text-xs text-zinc-300">
-                <FiCheckCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-                <span>Execute formal subpoena for SWIFT wire routing through Swiss intermediary bank accounts.</span>
-              </div>
-              <div className="p-3 rounded-xl border border-zinc-800 bg-black/20 flex items-start gap-2.5 text-xs text-zinc-300">
-                <FiCheckCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-                <span>Re-examine container #C-881 tare weight telemetry with Port Authority Crane logs.</span>
-              </div>
-              <div className="p-3 rounded-xl border border-zinc-800 bg-black/20 flex items-start gap-2.5 text-xs text-zinc-300">
-                <FiCheckCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-                <span>Triangulate cell tower handoffs for Viktor Mercer between 23:00 and 23:45.</span>
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Link
+                to={`/cases/${currentCase.caseNumber}/board`}
+                className="p-3 rounded-xl border border-zinc-800 hover:border-red-600 text-zinc-300 hover:text-white flex items-center justify-between transition-colors bg-black/20 text-xs"
+              >
+                <span>Visual Pinboard Canvas</span>
+                <FiShare2 className="w-4 h-4 text-red-500" />
+              </Link>
+              <Link
+                to={`/cases/${currentCase.caseNumber}/timeline`}
+                className="p-3 rounded-xl border border-zinc-800 hover:border-red-600 text-zinc-300 hover:text-white flex items-center justify-between transition-colors bg-black/20 text-xs"
+              >
+                <span>Crime Timeline & Anomaly Engine</span>
+                <FiClock className="w-4 h-4 text-red-500" />
+              </Link>
+              <Link
+                to={`/cases/${currentCase.caseNumber}/graph`}
+                className="p-3 rounded-xl border border-zinc-800 hover:border-red-600 text-zinc-300 hover:text-white flex items-center justify-between transition-colors bg-black/20 text-xs"
+              >
+                <span>Entity Relationship Network</span>
+                <FiLayers className="w-4 h-4 text-red-500" />
+              </Link>
+              <Link
+                to={`/cases/${currentCase.caseNumber}/ai-hub`}
+                className="p-3 rounded-xl border border-zinc-800 hover:border-red-600 text-zinc-300 hover:text-white flex items-center justify-between transition-colors bg-black/20 text-xs"
+              >
+                <span>AI Multi-Agent Stategraph</span>
+                <FiLayers className="w-4 h-4 text-red-500" />
+              </Link>
             </div>
           </div>
 
@@ -515,36 +541,28 @@ export default function CaseDetails() {
             }}
           >
             <h3 className="font-bold text-white uppercase text-[11px] pb-2 border-b border-zinc-800">
-              Active Case Roster
+              Approved Officer Roster
             </h3>
-            <div className="space-y-2.5">
-              {roster.map((collab, idx) => (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between p-2.5 rounded-xl border border-zinc-800 bg-black/30">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span className="font-bold text-white font-sans">
+                    {typeof currentCase.leadInvestigator === "object" ? currentCase.leadInvestigator.name : "Lead Officer"}
+                  </span>
+                </div>
+                <span className="text-[10px] text-red-400 font-bold">[LEAD]</span>
+              </div>
+
+              {currentCase.collaborators?.map((collab, idx) => (
                 <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl border border-zinc-800 bg-black/30">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-emerald-500" />
                     <span className="font-bold text-white font-sans">{collab.name}</span>
                   </div>
-                  <span className="text-[10px] text-red-400 font-bold">[{collab.badgeNumber || "ACTIVE"}]</span>
+                  <span className="text-[10px] text-zinc-400 font-bold">[{collab.badgeNumber}]</span>
                 </div>
               ))}
-            </div>
-
-            <div className="pt-4 border-t border-zinc-800 space-y-2">
-              <span className="text-[10px] uppercase text-zinc-500 block">Workspace Actions</span>
-              <Link
-                to={`/cases/${caseId || "CASE-2026-0715"}/timeline`}
-                className="w-full p-2.5 rounded-xl border border-zinc-800 hover:border-red-600 text-zinc-300 hover:text-white flex items-center justify-between transition-colors"
-              >
-                <span>Crime Timeline</span>
-                <FiClock className="w-3.5 h-3.5 text-red-500" />
-              </Link>
-              <Link
-                to={`/cases/${caseId || "CASE-2026-0715"}/graph`}
-                className="w-full p-2.5 rounded-xl border border-zinc-800 hover:border-red-600 text-zinc-300 hover:text-white flex items-center justify-between transition-colors"
-              >
-                <span>Entity Graph</span>
-                <FiShare2 className="w-3.5 h-3.5 text-red-500" />
-              </Link>
             </div>
           </div>
         </div>
@@ -562,100 +580,151 @@ export default function CaseDetails() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {evidenceList.map((ev) => (
-              <div
-                key={ev._id}
-                className="p-5 rounded-2xl border flex flex-col justify-between space-y-4"
-                style={{
-                  backgroundColor: themeMode === "light" ? "#ffffff" : "#09090b",
-                  borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a",
-                }}
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-red-600/10 text-red-500 border border-red-600/30">
-                      {ev.type}
-                    </span>
-                    <span className="text-[9px] font-mono text-emerald-400 uppercase font-bold">
-                      VERIFIED
-                    </span>
+          {evidenceList.length === 0 ? (
+            <div className="p-12 text-center text-xs font-mono text-zinc-400 border rounded-2xl border-zinc-800">
+              No evidence records ingested yet. Click above to log your first artifact.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {evidenceList.map((ev) => (
+                <div
+                  key={ev._id}
+                  className="p-5 rounded-2xl border flex flex-col justify-between space-y-4"
+                  style={{
+                    backgroundColor: themeMode === "light" ? "#ffffff" : "#09090b",
+                    borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a",
+                  }}
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-red-600/10 text-red-500 border border-red-600/30">
+                        {ev.type}
+                      </span>
+                      <span className="text-[9px] font-mono text-emerald-400 uppercase font-bold">
+                        VERIFIED
+                      </span>
+                    </div>
+
+                    <h4 className="text-xs font-bold" style={{ color: theme.text }}>
+                      {ev.title}
+                    </h4>
+
+                    <p className="text-[11px] text-zinc-400 leading-relaxed">
+                      {ev.aiSummary || ev.description}
+                    </p>
                   </div>
 
-                  <h4 className="text-xs font-bold" style={{ color: theme.text }}>
-                    {ev.title}
-                  </h4>
-
-                  <p className="text-[11px] text-zinc-400 leading-relaxed">
-                    {ev.aiSummary || ev.description}
-                  </p>
+                  <div className="pt-3 border-t flex items-center justify-between text-[10px] font-mono text-zinc-500" style={{ borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a" }}>
+                    <span className="flex items-center gap-1 truncate max-w-[180px]">
+                      <FiHash className="w-3 h-3 text-red-500 shrink-0" />
+                      <span>{ev.fileHash || "SHA256:VERIFIED"}</span>
+                    </span>
+                    <span>{new Date(ev.createdAt).toLocaleDateString()}</span>
+                  </div>
                 </div>
-
-                <div className="pt-3 border-t flex items-center justify-between text-[10px] font-mono text-zinc-500" style={{ borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a" }}>
-                  <span className="flex items-center gap-1 truncate max-w-[180px]">
-                    <FiHash className="w-3 h-3 text-red-500 shrink-0" />
-                    <span>{ev.fileHash || "SHA256:VERIFIED"}</span>
-                  </span>
-                  <span>{new Date(ev.createdAt).toLocaleDateString()}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {activeTab === "suspects" && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {activeTab === "approvals" && (
+        <div className="space-y-6">
           <div
-            className="p-5 rounded-2xl border space-y-3"
+            className="p-6 rounded-3xl border space-y-4"
             style={{
               backgroundColor: themeMode === "light" ? "#ffffff" : "#09090b",
               borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a",
             }}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-red-600/10 border border-red-600/30 flex items-center justify-center text-red-500 font-bold">
-                  <FiUser className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold" style={{ color: theme.text }}>Viktor Mercer</h4>
-                  <span className="text-[10px] font-mono text-red-400 font-bold">AKA: The Architect</span>
-                </div>
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-white">Pending Clearance Requests</h3>
+                <p className="text-[10px] text-zinc-400 font-mono">Officers requesting access clearance to collaborate on this case</p>
               </div>
-              <span className="text-[9px] font-mono uppercase px-2 py-0.5 rounded bg-red-600/20 text-red-400 border border-red-600/40 font-bold">
-                CRITICAL TARGET
-              </span>
+              <span className="text-[10px] font-mono text-red-500 font-bold">{pendingRequests.length} Pending</span>
             </div>
-            <p className="text-[11px] text-zinc-400 leading-relaxed font-mono">
-              Primary subject identified across intercepted communications. Connected to offshore shell accounts and Pier 4 unauthorized entry.
-            </p>
+
+            {pendingRequests.length === 0 ? (
+              <div className="p-8 text-center text-xs font-mono text-zinc-400">
+                No pending clearance requests awaiting review.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pendingRequests.map((req: any) => (
+                  <div key={req._id} className="p-4 rounded-xl border border-zinc-800 bg-black/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white text-xs">{req.userName}</span>
+                        <span className="text-[10px] font-mono text-red-400">[{req.userBadge}]</span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400">{req.notes || "No notes provided."}</p>
+                      <span className="text-[9px] font-mono text-zinc-500 block">Requested: {new Date(req.requestedAt).toLocaleString()}</span>
+                    </div>
+
+                    {isLead && (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => handleReviewRequest(req._id, "approved")}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer"
+                        >
+                          <FiCheck className="w-3.5 h-3.5" />
+                          <span>Approve</span>
+                        </button>
+                        <button
+                          onClick={() => handleReviewRequest(req._id, "rejected")}
+                          className="px-3 py-1.5 rounded-lg border border-red-600 text-red-400 hover:bg-red-600/10 font-bold text-xs flex items-center gap-1 cursor-pointer"
+                        >
+                          <FiX className="w-3.5 h-3.5" />
+                          <span>Reject</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div
-            className="p-5 rounded-2xl border space-y-3"
+            className="p-6 rounded-3xl border space-y-4"
             style={{
               backgroundColor: themeMode === "light" ? "#ffffff" : "#09090b",
               borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a",
             }}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-300 font-bold">
-                  <FiUser className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold" style={{ color: theme.text }}>Dmitri Vance</h4>
-                  <span className="text-[10px] font-mono text-zinc-400">AKA: Broker D</span>
-                </div>
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-white">Clearance Audit History</h3>
+                <p className="text-[10px] text-zinc-400 font-mono">Immutable audit log of reviewed requests</p>
               </div>
-              <span className="text-[9px] font-mono uppercase px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 font-bold">
-                PERSON OF INTEREST
-              </span>
+              <span className="text-[10px] font-mono text-zinc-400">{accessRequests.length} Total Records</span>
             </div>
-            <p className="text-[11px] text-zinc-400 leading-relaxed font-mono">
-              Customs broker recorded escorting subjects inside Warehouse 14B. Authorized signatory on Aegis Maritime filings.
-            </p>
+
+            <div className="space-y-2">
+              {accessRequests.map((req: any, idx) => (
+                <div key={idx} className="p-3 rounded-xl border border-zinc-800 bg-black/20 flex items-center justify-between text-xs font-mono">
+                  <div>
+                    <span className="text-white font-bold font-sans">{req.userName}</span>
+                    <span className="text-zinc-500 ml-2">[{req.userBadge}]</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${
+                      req.status === "approved"
+                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                        : req.status === "rejected"
+                        ? "bg-red-500/10 text-red-400 border-red-500/30"
+                        : "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                    }`}>
+                      {req.status}
+                    </span>
+                    {req.reviewedBy && (
+                      <span className="text-[10px] text-zinc-500">By: {req.reviewedBy}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -671,16 +740,16 @@ export default function CaseDetails() {
           <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wider text-white">Live Forensic Memo Stream</h3>
-              <p className="text-[10px] text-zinc-400 font-mono">Real-time investigator memos synced across open sessions</p>
+              <p className="text-[10px] text-zinc-400 font-mono">Real-time investigator memos synced over WebSockets</p>
             </div>
-            <span className="text-[10px] font-mono text-red-500 font-bold">{caseMessages.length} Recorded Memos</span>
+            <span className="text-[10px] font-mono text-red-500 font-bold">{caseMessages.length} Memos</span>
           </div>
 
           <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
             {caseMessages.map((msg) => (
               <div key={msg.id} className="p-3.5 rounded-xl border border-zinc-800 bg-black/30 space-y-1">
                 <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400">
-                  <span className="text-red-400 font-bold">{msg.user?.name || "Detective"} [{msg.user?.badgeNumber || "INV"}]</span>
+                  <span className="text-red-400 font-bold">{msg.user?.name || "Officer"} [{msg.user?.badgeNumber || "INV"}]</span>
                   <span>{msg.timestamp}</span>
                 </div>
                 <p className="text-xs text-zinc-200 leading-relaxed">{msg.message}</p>
@@ -752,7 +821,7 @@ export default function CaseDetails() {
           >
             <div className="flex items-center justify-between pb-3 border-b" style={{ borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a" }}>
               <h3 className="text-xs font-bold uppercase tracking-wider">Ingest Forensic Evidence</h3>
-              <button onClick={() => setIsEvidenceModalOpen(false)} className="text-zinc-400 hover:text-red-500">
+              <button onClick={() => setIsEvidenceModalOpen(false)} className="text-zinc-400 hover:text-red-500 cursor-pointer">
                 ✕
               </button>
             </div>
@@ -818,13 +887,13 @@ export default function CaseDetails() {
                 <button
                   type="button"
                   onClick={() => setIsEvidenceModalOpen(false)}
-                  className="px-3 py-1.5 rounded-xl border border-zinc-700 text-xs font-semibold"
+                  className="px-3 py-1.5 rounded-xl border border-zinc-700 text-xs font-semibold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold flex items-center gap-1.5"
+                  className="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                 >
                   <FiPlus className="w-4 h-4" />
                   <span>Ingest Record</span>

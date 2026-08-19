@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import {
@@ -11,6 +11,7 @@ import {
   FiCrosshair,
   FiX,
   FiCheck,
+  FiInbox,
 } from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -22,73 +23,32 @@ export default function Dashboard() {
   const { theme, themeMode } = useTheme();
 
   const [cases, setCases] = useState<Case[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [newCaseTitle, setNewCaseTitle] = useState("");
   const [newCaseCategory, setNewCaseCategory] = useState("Organized Crime");
   const [newCasePriority, setNewCasePriority] = useState<"low" | "medium" | "high" | "critical">("high");
   const [newCaseDescription, setNewCaseDescription] = useState("");
 
-  useEffect(() => {
-    const loadCases = async () => {
-      try {
-        const response = await caseService.getCases();
-        if (response.success && response.cases) {
-          setCases(response.cases);
-        }
-      } catch {
-        setCases([
-          {
-            _id: "case-demo-1",
-            caseNumber: "CASE-2026-0715",
-            title: "Operation Nightfall: Port Horizon Syndicate",
-            description:
-              "Multi-agency investigation into cross-border illicit logistics, shell entities, and high-value cargo diversion at Port Horizon Terminal 4.",
-            status: "under_investigation",
-            priority: "high",
-            category: "Organized Crime & Smuggling",
-            leadInvestigator: user?.name || "Det. Sarah Chen",
-            assignedMembers: ["Det. Sarah Chen", "Analyst Elena Rostova"],
-            tags: ["Port Horizon", "Smuggling", "Shell Corporation"],
-            location: "Port Horizon Dock 4, Sector 7",
-            metrics: {
-              evidenceCount: 4,
-              entityCount: 5,
-              timelineCount: 4,
-              taskCount: 3,
-              riskScore: 78,
-            },
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          {
-            _id: "case-demo-2",
-            caseNumber: "CASE-2026-0801",
-            title: "Operation Phantom Wire: Financial Laundering Network",
-            description:
-              "Tracing rapid layering transactions across offshore fintech accounts suspected of laundering contraband proceeds.",
-            status: "active",
-            priority: "critical",
-            category: "Financial Fraud",
-            leadInvestigator: user?.name || "Det. Sarah Chen",
-            assignedMembers: ["Det. Sarah Chen", "Director Marcus Vance"],
-            tags: ["Wire Fraud", "Crypto Exchange", "Offshore"],
-            location: "Metropolitan Financial District",
-            metrics: {
-              evidenceCount: 2,
-              entityCount: 3,
-              timelineCount: 2,
-              taskCount: 2,
-              riskScore: 85,
-            },
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        ]);
+  const loadCases = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await caseService.getCases();
+      if (response.success && response.cases) {
+        setCases(response.cases);
+      } else {
+        setCases([]);
       }
-    };
+    } catch {
+      setCases([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
+  useEffect(() => {
     loadCases();
-  }, [user]);
+  }, [loadCases]);
 
   const handleCreateCase = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,28 +66,7 @@ export default function Dashboard() {
         setCases([response.case, ...cases]);
       }
     } catch {
-      const mockNewCase: Case = {
-        _id: `case-${Date.now()}`,
-        caseNumber: `CASE-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-        title: newCaseTitle,
-        description: newCaseDescription,
-        status: "new",
-        priority: newCasePriority,
-        category: newCaseCategory,
-        leadInvestigator: user?.name || "Investigator",
-        assignedMembers: [user?.name || "Investigator"],
-        tags: [newCaseCategory],
-        metrics: {
-          evidenceCount: 0,
-          entityCount: 0,
-          timelineCount: 0,
-          taskCount: 0,
-          riskScore: 50,
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setCases([mockNewCase, ...cases]);
+      // Handled
     } finally {
       setIsCreateModalOpen(false);
       setNewCaseTitle("");
@@ -163,6 +102,10 @@ export default function Dashboard() {
     }
   };
 
+  const totalEvidence = cases.reduce((acc, c) => acc + (c.metrics?.evidenceCount || 0), 0);
+  const totalEntities = cases.reduce((acc, c) => acc + (c.metrics?.entityCount || 0), 0);
+  const highPriorityCount = cases.filter((c) => c.priority === "high" || c.priority === "critical").length;
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto" style={{ fontFamily: "'Poppins', sans-serif" }}>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -170,14 +113,14 @@ export default function Dashboard() {
           <div className="flex items-center gap-2 mb-1">
             <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
             <span className="text-[11px] uppercase font-mono tracking-widest text-zinc-400 font-bold">
-              Surveillance Stream Active
+              Precinct Command Stream
             </span>
           </div>
           <h1 className="text-3xl font-black tracking-tight" style={{ color: theme.text }}>
             Command Cockpit
           </h1>
           <p className="text-xs mt-0.5 text-zinc-400">
-            Agent: <strong style={{ color: theme.text }}>{user?.name}</strong> • Division:{" "}
+            Officer: <strong style={{ color: theme.text }}>{user?.name}</strong> • Division:{" "}
             <span className="font-semibold text-red-500">{user?.department || "Major Crimes"}</span>{" "}
             • Badge <span className="font-mono" style={{ color: theme.text }}>[{user?.badgeNumber || "INV-0000"}]</span>
           </p>
@@ -190,42 +133,6 @@ export default function Dashboard() {
           <FiPlus className="w-4 h-4" />
           <span>Initiate New Case</span>
         </button>
-      </div>
-
-      <div
-        className="p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-        style={{
-          backgroundColor: themeMode === "light" ? "#ffffff" : "#09090b",
-          borderColor: "rgba(239, 68, 68, 0.3)",
-        }}
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-red-600/10 border border-red-600/30 flex items-center justify-center text-red-500 shrink-0">
-            <FiCpu className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-mono font-bold text-red-500 uppercase tracking-wider">
-                AI Intelligence Stream
-              </span>
-              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-red-600/20 text-red-400 font-bold">
-                Action Required
-              </span>
-            </div>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              Detected <strong style={{ color: theme.text }}>3 candidate entity links</strong> and <strong style={{ color: theme.text }}>1 timeline anomaly</strong> awaiting detective sign-off in{" "}
-              <span className="font-mono text-red-500 font-bold">#CASE-2026-0715</span>.
-            </p>
-          </div>
-        </div>
-
-        <Link
-          to="/cases/CASE-2026-0715"
-          className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-500 text-white flex items-center gap-1.5 transition-colors shrink-0 shadow-md shadow-red-600/20"
-        >
-          <span>Inspect Case</span>
-          <FiArrowRight className="w-3.5 h-3.5" />
-        </Link>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -244,7 +151,7 @@ export default function Dashboard() {
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-black" style={{ color: theme.text }}>{cases.length}</span>
-            <span className="text-[10px] text-zinc-400 font-mono">2 High Priority</span>
+            <span className="text-[10px] text-zinc-400 font-mono">{highPriorityCount} High Priority</span>
           </div>
         </div>
 
@@ -257,13 +164,13 @@ export default function Dashboard() {
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400">
-              Evidence Vault
+              Evidence Records
             </span>
             <FiLayers className="w-4 h-4 text-red-500" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black" style={{ color: theme.text }}>6</span>
-            <span className="text-[10px] text-zinc-400 font-mono">Verified Hash</span>
+            <span className="text-2xl font-black" style={{ color: theme.text }}>{totalEvidence}</span>
+            <span className="text-[10px] text-zinc-400 font-mono">SHA-256 Verified</span>
           </div>
         </div>
 
@@ -281,8 +188,8 @@ export default function Dashboard() {
             <FiUsers className="w-4 h-4 text-red-500" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black" style={{ color: theme.text }}>8</span>
-            <span className="text-[10px] text-zinc-400 font-mono">5 Cross-Linked</span>
+            <span className="text-2xl font-black" style={{ color: theme.text }}>{totalEntities}</span>
+            <span className="text-[10px] text-zinc-400 font-mono">Cross-Linked</span>
           </div>
         </div>
 
@@ -295,13 +202,13 @@ export default function Dashboard() {
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400">
-              AI Confidence Index
+              System State
             </span>
             <FiCpu className="w-4 h-4 text-red-500" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-red-500">92.4%</span>
-            <span className="text-[10px] text-zinc-400 font-mono">Calibrated</span>
+            <span className="text-2xl font-black text-emerald-500">READY</span>
+            <span className="text-[10px] text-zinc-400 font-mono">Air-Gapped</span>
           </div>
         </div>
       </div>
@@ -318,93 +225,126 @@ export default function Dashboard() {
             to="/cases"
             className="text-xs font-bold text-red-500 hover:text-red-400 flex items-center gap-1 transition-colors"
           >
-            <span>Open Kanban Operations</span>
+            <span>Open Kanban Matrix</span>
             <FiArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {cases.map((c) => (
-            <div
-              key={c._id}
-              className="p-5 rounded-2xl border flex flex-col justify-between"
-              style={{
-                backgroundColor: themeMode === "light" ? "#ffffff" : "#0a0a0a",
-                borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a",
-              }}
+        {isLoading ? (
+          <div className="p-12 text-center text-xs font-mono text-zinc-400">
+            Loading investigation registry...
+          </div>
+        ) : cases.length === 0 ? (
+          <div
+            className="p-12 rounded-3xl border text-center space-y-4"
+            style={{
+              backgroundColor: themeMode === "light" ? "#ffffff" : "#09090b",
+              borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a",
+            }}
+          >
+            <div className="w-12 h-12 rounded-2xl bg-red-600/10 border border-red-600/30 flex items-center justify-center text-red-500 mx-auto">
+              <FiInbox className="w-6 h-6" />
+            </div>
+            <div className="space-y-1 max-w-sm mx-auto">
+              <h3 className="text-base font-bold" style={{ color: theme.text }}>
+                No Active Case Operations
+              </h3>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Your precinct registry is currently clear. Initiate a new case operation to ingest evidence, track suspects, and collaborate in real-time.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-md shadow-red-600/20"
             >
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold text-red-500">
-                      {c.caseNumber}
-                    </span>
-                    <span
-                      className={`text-[9px] font-mono uppercase font-bold px-1.5 py-0.5 rounded border ${getPriorityStyle(
-                        c.priority
-                      )}`}
-                    >
-                      {c.priority}
+              <FiPlus className="w-4 h-4" />
+              <span>Initiate New Case</span>
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {cases.map((c) => (
+              <div
+                key={c._id}
+                className="p-5 rounded-2xl border flex flex-col justify-between"
+                style={{
+                  backgroundColor: themeMode === "light" ? "#ffffff" : "#0a0a0a",
+                  borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a",
+                }}
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono font-bold text-red-500">
+                        {c.caseNumber}
+                      </span>
+                      <span
+                        className={`text-[9px] font-mono uppercase font-bold px-1.5 py-0.5 rounded border ${getPriorityStyle(
+                          c.priority
+                        )}`}
+                      >
+                        {c.priority}
+                      </span>
+                    </div>
+
+                    <span className="text-[11px] font-bold font-mono" style={{ color: theme.text }}>
+                      {getStatusLabel(c.status)}
                     </span>
                   </div>
 
-                  <span className="text-[11px] font-bold font-mono" style={{ color: theme.text }}>
-                    {getStatusLabel(c.status)}
-                  </span>
+                  <h3 className="text-sm font-bold mb-1.5" style={{ color: theme.text }}>
+                    {c.title}
+                  </h3>
+                  <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed mb-4">
+                    {c.description}
+                  </p>
+
+                  <div className="flex flex-wrap gap-1 mb-4">
+                    {c.tags?.map((t) => (
+                      <span
+                        key={t}
+                        className="text-[9px] font-mono px-2 py-0.5 rounded border"
+                        style={{
+                          backgroundColor: themeMode === "light" ? "#f1f5f9" : "#18181b",
+                          borderColor: themeMode === "light" ? "#e2e8f0" : "#27272a",
+                          color: theme.mutedText,
+                        }}
+                      >
+                        #{t}
+                      </span>
+                    ))}
+                  </div>
                 </div>
 
-                <h3 className="text-sm font-bold mb-1.5" style={{ color: theme.text }}>
-                  {c.title}
-                </h3>
-                <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed mb-4">
-                  {c.description}
-                </p>
-
-                <div className="flex flex-wrap gap-1 mb-4">
-                  {c.tags?.map((t) => (
-                    <span
-                      key={t}
-                      className="text-[9px] font-mono px-2 py-0.5 rounded border"
-                      style={{
-                        backgroundColor: themeMode === "light" ? "#f1f5f9" : "#18181b",
-                        borderColor: themeMode === "light" ? "#e2e8f0" : "#27272a",
-                        color: theme.mutedText,
-                      }}
-                    >
-                      #{t}
+                <div
+                  className="pt-3 border-t flex items-center justify-between text-xs font-mono text-zinc-400"
+                  style={{ borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a" }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1">
+                      <FiLayers className="w-3 h-3 text-red-500" />
+                      <strong style={{ color: theme.text }}>{c.metrics?.evidenceCount || 0}</strong> Evidence
                     </span>
-                  ))}
+                    <span className="flex items-center gap-1">
+                      <FiUsers className="w-3 h-3 text-red-500" />
+                      <strong style={{ color: theme.text }}>{c.metrics?.entityCount || 0}</strong> Entities
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Link
+                      to={`/cases/${c.caseNumber}`}
+                      className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-1 transition-all shadow-md shadow-red-600/20"
+                    >
+                      <span>Inspect</span>
+                      <FiArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
                 </div>
               </div>
-
-              <div
-                className="pt-3 border-t flex items-center justify-between text-xs font-mono text-zinc-400"
-                style={{ borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a" }}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="flex items-center gap-1">
-                    <FiLayers className="w-3 h-3 text-red-500" />
-                    <strong style={{ color: theme.text }}>{c.metrics?.evidenceCount || 0}</strong> Evidence
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <FiUsers className="w-3 h-3 text-red-500" />
-                    <strong style={{ color: theme.text }}>{c.metrics?.entityCount || 0}</strong> Entities
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Link
-                    to={`/cases/${c.caseNumber}`}
-                    className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-1 transition-all shadow-md shadow-red-600/20"
-                  >
-                    <span>Inspect</span>
-                    <FiArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <AnimatePresence>
@@ -449,7 +389,7 @@ export default function Dashboard() {
                     required
                     value={newCaseTitle}
                     onChange={(e) => setNewCaseTitle(e.target.value)}
-                    placeholder="e.g. Operation Deep Current"
+                    placeholder="e.g. Operation Horizon Strike"
                     className="w-full p-2.5 rounded-xl border bg-transparent outline-none focus:border-red-500 text-xs"
                     style={{ borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a", color: theme.text }}
                   />
@@ -499,7 +439,7 @@ export default function Dashboard() {
                     rows={3}
                     value={newCaseDescription}
                     onChange={(e) => setNewCaseDescription(e.target.value)}
-                    placeholder="Brief description of the suspect, incident location, and objective..."
+                    placeholder="Brief summary of suspect, incident location, and objective..."
                     className="w-full p-2.5 rounded-xl border bg-transparent outline-none focus:border-red-500 text-xs resize-none"
                     style={{ borderColor: themeMode === "light" ? "#e4e4e7" : "#27272a", color: theme.text }}
                   />

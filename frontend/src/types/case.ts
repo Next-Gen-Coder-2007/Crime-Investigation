@@ -2,6 +2,28 @@ import type { User } from "./auth";
 
 export type CaseStatus = "new" | "active" | "under_investigation" | "review" | "closed";
 export type CasePriority = "low" | "medium" | "high" | "critical";
+export type AccessRequestStatus = "pending" | "approved" | "rejected";
+
+export interface AccessRequest {
+  _id?: string;
+  userId: string;
+  userName: string;
+  userBadge: string;
+  userEmail?: string;
+  requestedAt: string;
+  status: AccessRequestStatus;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  notes?: string;
+}
+
+export interface Collaborator {
+  userId: string;
+  name: string;
+  badgeNumber: string;
+  role: string;
+  joinedAt: string;
+}
 
 export interface CaseMetrics {
   evidenceCount: number;
@@ -21,6 +43,8 @@ export interface Case {
   category: string;
   leadInvestigator: User | string;
   assignedMembers: (User | string)[];
+  collaborators?: Collaborator[];
+  accessRequests?: AccessRequest[];
   tags: string[];
   location?: string;
   deadline?: string;

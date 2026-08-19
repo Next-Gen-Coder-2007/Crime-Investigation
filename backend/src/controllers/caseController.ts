@@ -1,4 +1,5 @@
 import { Response } from "express";
+import mongoose from "mongoose";
 import { Case } from "../models/Case.js";
 import { AuthenticatedRequest } from "../middleware/auth.js";
 import { logAuditAction } from "../middleware/auditLogger.js";
@@ -7,9 +8,14 @@ import { Entity } from "../models/Entity.js";
 import { TimelineEvent } from "../models/TimelineEvent.js";
 import { Task } from "../models/Task.js";
 
-// @desc    Get all accessible cases
-// @route   GET /api/cases
-// @access  Private
+const getCaseQuery = (paramId: string | string[]) => {
+  const idStr = String(paramId);
+  if (mongoose.isValidObjectId(idStr)) {
+    return { $or: [{ _id: idStr }, { caseNumber: idStr }] };
+  }
+  return { caseNumber: idStr };
+};
+
 export const getCases = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { status, priority, search } = req.query;
@@ -27,8 +33,8 @@ export const getCases = async (req: AuthenticatedRequest, res: Response): Promis
     }
 
     const cases = await Case.find(query)
-      .populate("leadInvestigator", "name email badgeNumber role avatar")
-      .populate("assignedMembers", "name email badgeNumber role avatar")
+      .populate("leadInvestigator", "name email badgeNumber role avatar department")
+      .populate("assignedMembers", "name email badgeNumber role avatar department")
       .sort({ updatedAt: -1 });
 
     res.status(200).json({
@@ -41,12 +47,9 @@ export const getCases = async (req: AuthenticatedRequest, res: Response): Promis
   }
 };
 
-// @desc    Get single case by ID with complete metrics
-// @route   GET /api/cases/:id
-// @access  Private
 export const getCaseById = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const targetCase = await Case.findById(req.params.id)
+    const targetCase = await Case.findOne(getCaseQuery(req.params.id))
       .populate("leadInvestigator", "name email badgeNumber role avatar department")
       .populate("assignedMembers", "name email badgeNumber role avatar department");
 
@@ -55,7 +58,6 @@ export const getCaseById = async (req: AuthenticatedRequest, res: Response): Pro
       return;
     }
 
-    // Refresh live metrics
     const [evidenceCount, entityCount, timelineCount, taskCount] = await Promise.all([
       Evidence.countDocuments({ caseId: targetCase._id }),
       Entity.countDocuments({ caseId: targetCase._id }),
@@ -80,9 +82,6 @@ export const getCaseById = async (req: AuthenticatedRequest, res: Response): Pro
   }
 };
 
-// @desc    Create a new case
-// @route   POST /api/cases
-// @access  Private (Admin, Investigator)
 export const createCase = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { title, description, priority, category, location, deadline, tags, assignedMembers } =
@@ -93,7 +92,6 @@ export const createCase = async (req: AuthenticatedRequest, res: Response): Prom
       return;
     }
 
-    // Auto-generate case number
     const count = await Case.countDocuments();
     const caseNumber = `CASE-${new Date().getFullYear()}-${String(count + 101).padStart(4, "0")}`;
 
@@ -108,6 +106,16 @@ export const createCase = async (req: AuthenticatedRequest, res: Response): Prom
       tags: tags || [],
       leadInvestigator: req.user!._id,
       assignedMembers: assignedMembers || [req.user!._id],
+      collaborators: [
+        {
+          userId: req.user!._id,
+          name: req.user!.name,
+          badgeNumber: req.user!.badgeNumber || "INV-0001",
+          role: req.user!.role || "investigator",
+          joinedAt: new Date(),
+        },
+      ],
+      accessRequests: [],
     });
 
     if (req.user) {
@@ -132,9 +140,6 @@ export const createCase = async (req: AuthenticatedRequest, res: Response): Prom
   }
 };
 
-// @desc    Update case status
-// @route   PATCH /api/cases/:id/status
-// @access  Private (Admin, Investigator)
 export const updateCaseStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { status } = req.body;
@@ -145,8 +150,8 @@ export const updateCaseStatus = async (req: AuthenticatedRequest, res: Response)
       return;
     }
 
-    const updatedCase = await Case.findByIdAndUpdate(
-      req.params.id,
+    const updatedCase = await Case.findOneAndUpdate(
+      getCaseQuery(req.params.id),
       { status },
       { new: true }
     );
@@ -178,12 +183,164 @@ export const updateCaseStatus = async (req: AuthenticatedRequest, res: Response)
   }
 };
 
-// @desc    Delete / Archive a case
-// @route   DELETE /api/cases/:id
-// @access  Private (Admin Only)
+export const requestCaseAccess = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { notes } = req.body;
+    const targetCase = await Case.findOne(getCaseQuery(req.params.id));
+
+    if (!targetCase) {
+      res.status(404).json({ success: false, message: "Case not found." });
+      return;
+    }
+
+    const isAlreadyMember =
+      targetCase.leadInvestigator.toString() === req.user!._id.toString() ||
+      targetCase.assignedMembers.some((m) => m.toString() === req.user!._id.toString()) ||
+      targetCase.collaborators.some((c) => c.userId.toString() === req.user!._id.toString());
+
+    if (isAlreadyMember) {
+      res.status(400).json({ success: false, message: "You are already an authorized collaborator on this case." });
+      return;
+    }
+
+    const pendingRequest = targetCase.accessRequests.find(
+      (r) => r.userId.toString() === req.user!._id.toString() && r.status === "pending"
+    );
+
+    if (pendingRequest) {
+      res.status(400).json({ success: false, message: "Your access clearance request is currently pending review." });
+      return;
+    }
+
+    const newRequest = {
+      userId: req.user!._id,
+      userName: req.user!.name,
+      userBadge: req.user!.badgeNumber || "INV-8402",
+      userEmail: req.user!.email,
+      requestedAt: new Date(),
+      status: "pending" as const,
+      notes: notes || "",
+    };
+
+    targetCase.accessRequests.push(newRequest as any);
+    await targetCase.save();
+
+    if (req.user) {
+      await logAuditAction({
+        user: req.user,
+        caseId: targetCase._id,
+        action: "CASE_ACCESS_REQUESTED",
+        targetType: "CASE",
+        targetId: targetCase._id.toString(),
+        details: { requestedBy: req.user.name, badgeNumber: req.user.badgeNumber },
+        ipAddress: req.ip,
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Access clearance request submitted to the lead investigator.",
+      accessRequest: newRequest,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const reviewAccessRequest = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { status, notes } = req.body;
+    const { id, requestId } = req.params;
+
+    if (status !== "approved" && status !== "rejected") {
+      res.status(400).json({ success: false, message: "Invalid review decision. Must be 'approved' or 'rejected'." });
+      return;
+    }
+
+    const targetCase = await Case.findOne(getCaseQuery(id));
+
+    if (!targetCase) {
+      res.status(404).json({ success: false, message: "Case not found." });
+      return;
+    }
+
+    const requestIndex = targetCase.accessRequests.findIndex((r: any) => r._id?.toString() === requestId);
+    if (requestIndex === -1) {
+      res.status(404).json({ success: false, message: "Access request not found in history." });
+      return;
+    }
+
+    const request = targetCase.accessRequests[requestIndex];
+    request.status = status;
+    request.reviewedBy = req.user!.name;
+    request.reviewedAt = new Date();
+    if (notes) request.notes = notes;
+
+    if (status === "approved") {
+      if (!targetCase.assignedMembers.some((m) => m.toString() === request.userId.toString())) {
+        targetCase.assignedMembers.push(request.userId);
+      }
+      if (!targetCase.collaborators.some((c) => c.userId.toString() === request.userId.toString())) {
+        targetCase.collaborators.push({
+          userId: request.userId,
+          name: request.userName,
+          badgeNumber: request.userBadge,
+          role: "investigator",
+          joinedAt: new Date(),
+        });
+      }
+    }
+
+    await targetCase.save();
+
+    if (req.user) {
+      await logAuditAction({
+        user: req.user,
+        caseId: targetCase._id,
+        action: status === "approved" ? "CASE_ACCESS_APPROVED" : "CASE_ACCESS_REJECTED",
+        targetType: "CASE",
+        targetId: targetCase._id.toString(),
+        details: {
+          decision: status,
+          targetUser: request.userName,
+          reviewedBy: req.user.name,
+        },
+        ipAddress: req.ip,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Access clearance ${status} for ${request.userName}.`,
+      case: targetCase,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getAccessRequests = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const targetCase = await Case.findOne(getCaseQuery(req.params.id));
+
+    if (!targetCase) {
+      res.status(404).json({ success: false, message: "Case not found." });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      accessRequests: targetCase.accessRequests || [],
+      collaborators: targetCase.collaborators || [],
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export const deleteCase = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const targetCase = await Case.findByIdAndDelete(req.params.id);
+    const targetCase = await Case.findOneAndDelete(getCaseQuery(req.params.id));
 
     if (!targetCase) {
       res.status(404).json({ success: false, message: "Case not found." });
